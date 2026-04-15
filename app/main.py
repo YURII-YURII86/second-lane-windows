@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
-import selectors
+import queue
 import shutil
 import socket
 import sqlite3
@@ -69,6 +69,17 @@ def _drain_process_output(process_id: int) -> None:
             _append_process_log(item, line)
     finally:
         item["stdout_closed"] = True
+
+
+def _drain_binary_stream(stream: Any, chunk_queue: queue.Queue[bytes | None]) -> None:
+    try:
+        while True:
+            chunk = stream.read(4096)
+            if not chunk:
+                break
+            chunk_queue.put(chunk)
+    finally:
+        chunk_queue.put(None)
 
 
 def auth_dependency(authorization: str | None = Header(default=None)) -> None:
@@ -848,33 +859,37 @@ def run_service_and_smoke_check(req: RunServiceReq, _auth: None = Depends(auth_d
     chunk_buffer = ""
     try:
         if req.startup_text:
-            selector = selectors.DefaultSelector()
-            if proc.stdout is not None:
-                selector.register(proc.stdout, selectors.EVENT_READ)
-            while time.time() < deadline:
-                if proc.stdout is None:
-                    break
-                events = selector.select(timeout=0.2)
-                if events:
-                    chunk = os.read(proc.stdout.fileno(), 4096)
-                    if chunk:
-                        text = chunk.decode("utf-8", errors="replace")
-                        chunk_buffer += text
-                        split_lines = chunk_buffer.splitlines(keepends=True)
-                        if split_lines and not split_lines[-1].endswith(("\n", "\r")):
-                            chunk_buffer = split_lines.pop()
-                        else:
-                            chunk_buffer = ""
-                        lines.extend(line.rstrip("\r\n") for line in split_lines)
-                        if req.startup_text in text or req.startup_text in chunk_buffer:
-                            started = True
-                            break
-                    elif proc.poll() is not None:
+            if proc.stdout is None:
+                started = False
+            else:
+                startup_queue: queue.Queue[bytes | None] = queue.Queue()
+                threading.Thread(target=_drain_binary_stream, args=(proc.stdout, startup_queue), daemon=True).start()
+                stream_closed = False
+                while time.time() < deadline:
+                    if stream_closed and startup_queue.empty() and proc.poll() is not None:
                         break
-                elif proc.poll() is not None:
-                    break
-            if proc.stdout is not None:
-                selector.close()
+                    try:
+                        chunk = startup_queue.get(timeout=0.2)
+                    except queue.Empty:
+                        if proc.poll() is not None and stream_closed:
+                            break
+                        continue
+                    if chunk is None:
+                        stream_closed = True
+                        if proc.poll() is not None and startup_queue.empty():
+                            break
+                        continue
+                    text = chunk.decode("utf-8", errors="replace")
+                    chunk_buffer += text
+                    split_lines = chunk_buffer.splitlines(keepends=True)
+                    if split_lines and not split_lines[-1].endswith(("\n", "\r")):
+                        chunk_buffer = split_lines.pop()
+                    else:
+                        chunk_buffer = ""
+                    lines.extend(line.rstrip("\r\n") for line in split_lines)
+                    if req.startup_text in text or req.startup_text in chunk_buffer:
+                        started = True
+                        break
         else:
             if req.startup_wait_sec > 0:
                 time.sleep(req.startup_wait_sec)

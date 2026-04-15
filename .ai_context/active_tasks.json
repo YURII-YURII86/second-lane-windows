@@ -3,15 +3,15 @@
   "open_risks": [
     {
       "id": "windows-host-validation",
-      "summary": "Need one real Windows-host validation pass for .bat and .ps1 flow before calling the release fully Windows-verified.",
+      "summary": "Need one real Windows-host validation pass for .bat/.ps1/ngrok before calling the branch fully Windows-verified.",
       "severity": "medium"
     },
     {
       "id": "docker-live-check",
-      "summary": "Optional Docker path was updated but not executed here because docker is unavailable in this environment.",
+      "summary": "Optional Docker path is structurally aligned but was not executed here because docker is unavailable.",
       "severity": "low"
     }
   ],
   "blockers": [],
-  "next_resume_hint": "If resuming, do the real Windows-host run first, then set the GitHub remote and push the existing main branch."
+  "next_resume_hint": "If resuming, first do the real Windows-host path, then set the GitHub remote and push the current main branch."
 }

@@ -376,6 +376,34 @@ def test_get_command_logs_returns_live_buffered_output(monkeypatch, tmp_path: Pa
     client.post("/v1/exec/stop", headers=AUTH, json={"process_id": process_id})
 
 
+def test_run_service_and_smoke_check_detects_startup_text(monkeypatch, tmp_path: Path) -> None:
+    root = _sandbox(monkeypatch, tmp_path)
+    client = TestClient(main.app)
+    resp = client.post(
+        "/v1/project/run_service_and_smoke_check",
+        headers=AUTH,
+        json={
+            "path": str(root),
+            "service_argv": [
+                sys.executable,
+                "-u",
+                "-c",
+                "import time; print('SERVER READY', flush=True); time.sleep(1.5)",
+            ],
+            "smoke_argv": [sys.executable, "-c", "print('smoke ok')"],
+            "startup_text": "SERVER READY",
+            "startup_timeout_sec": 5,
+            "smoke_timeout_sec": 10,
+        },
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["ok"] is True
+    assert payload["started"] is True
+    assert payload["smoke"]["ok"] is True
+    assert "SERVER READY" in "\n".join(payload["service_output"])
+
+
 def test_start_command_returns_controlled_error_for_missing_binary(monkeypatch, tmp_path: Path) -> None:
     root = _sandbox(monkeypatch, tmp_path)
     client = TestClient(main.app)
