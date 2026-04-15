@@ -1,0 +1,27 @@
+# OS
+.DS_Store
+
+# Python caches and virtualenvs
+__pycache__/
+.pytest_cache/
+.venv/
+.venv*/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Local secrets and machine-specific env
+.env
+.env.local
+
+# Runtime data
+*.log
+data/*.db
+
+# Project memory noise and generated snapshots
+.ai_context/checkpoints/
+.ai_context/sessions.jsonl
+.ai_context/change_log.jsonl
+
+# Temporary local outputs
+.tmp_*

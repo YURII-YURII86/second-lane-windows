@@ -1,0 +1,65 @@
+{
+  "project_name": "Second Lane Windows",
+  "project_type": "python-fastapi local bridge for GPT Actions",
+  "project_status": "active-cleaned-for-github",
+  "entrypoints": [
+    "app/main.py",
+    "gpts_agent_control.py",
+    "Запустить GPTS Agent.bat"
+  ],
+  "run_commands": [
+    "py -3.13 gpts_agent_control.py",
+    "uvicorn app.main:app --host 127.0.0.1 --port 8787"
+  ],
+  "build_commands": [
+    "docker build -t universal-flex-agent-windows ."
+  ],
+  "test_commands": [
+    "bash scripts/verify_local.sh",
+    "bash scripts/smoke_local.sh",
+    "powershell -ExecutionPolicy Bypass -File scripts\\verify_local.ps1",
+    "powershell -ExecutionPolicy Bypass -File scripts\\smoke_local.ps1"
+  ],
+  "key_paths": [
+    "app",
+    "app/core",
+    "gpts",
+    "tests",
+    "scripts",
+    "docs",
+    ".ai_context",
+    "workspace",
+    ".git"
+  ],
+  "external_services": [
+    "ngrok (public HTTPS tunnel)",
+    "SQLite state DB"
+  ],
+  "load_bearing_files": [
+    "app/main.py",
+    "app/core/config.py",
+    "gpts_agent_control.py",
+    "openapi.gpts.yaml",
+    "scripts/verify_local.ps1",
+    "scripts/smoke_local.ps1",
+    "scripts/verify_local.sh",
+    "scripts/smoke_local.sh",
+    "README.md",
+    "docs/WINDOWS_FIRST_START.md"
+  ],
+  "environment_constraints": [
+    "Primary supported native path is Windows + Python 3.13",
+    "Process environment overrides .env when both define the same setting",
+    "Optional Docker path is repo-local and no longer depends on machine-specific Linux host mounts"
+  ],
+  "security_constraints": [
+    "Bearer auth is required for all routes",
+    "workspace access is bounded by WORKSPACE_ROOTS",
+    "Local secrets and runtime artifacts are ignored by git"
+  ],
+  "workflow_constraints": [
+    "openapi.gpts.yaml is the GPT-facing action schema",
+    "This branch keeps current-state project memory aligned to this folder",
+    "git history starts at root commit bd9bb22 on branch main"
+  ]
+}

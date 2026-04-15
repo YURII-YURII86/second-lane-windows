@@ -1,0 +1,17 @@
+{
+  "active_tasks": [],
+  "open_risks": [
+    {
+      "id": "windows-host-validation",
+      "summary": "Need one real Windows-host validation pass for .bat and .ps1 flow before calling the release fully Windows-verified.",
+      "severity": "medium"
+    },
+    {
+      "id": "docker-live-check",
+      "summary": "Optional Docker path was updated but not executed here because docker is unavailable in this environment.",
+      "severity": "low"
+    }
+  ],
+  "blockers": [],
+  "next_resume_hint": "If resuming, do the real Windows-host run first, then set the GitHub remote and push the existing main branch."
+}
