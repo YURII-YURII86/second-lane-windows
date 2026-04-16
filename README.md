@@ -121,6 +121,42 @@ That makes it useful not only as a backup when another agent hits a limit, but a
 
 ## Quick Start (Windows)
 
+### Fastest Setup Through Codex
+
+If you already use Codex, the easiest path is to give it the Windows setup skill and let it do almost everything for you.
+
+Use this skill:
+
+`codex-skills/gpts-windows-autopilot/SKILL.md`
+
+What happens next in simple words:
+
+- Codex checks the project structure
+- verifies Python 3.13
+- verifies or helps install `ngrok`
+- helps fill `.env`
+- launches the panel
+- checks the tunnel and `openapi.gpts.yaml`
+- walks you through GPT setup in ChatGPT
+
+You only need to step in for real human-only actions:
+
+- login
+- registration
+- captcha
+- email confirmation
+- payment
+- system permission dialogs
+
+Example prompt for Codex:
+
+```text
+Use this skill and set up Second Lane on Windows for me:
+codex-skills/gpts-windows-autopilot/SKILL.md
+
+Do everything yourself. Stop only where my login, registration, captcha, email confirmation, payment, or a system permission is required.
+```
+
 ```powershell
 Copy-Item .env.example .env
 # Set AGENT_TOKEN (long random secret)
