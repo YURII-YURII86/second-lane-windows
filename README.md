@@ -20,13 +20,13 @@ See the Windows version in action before you read the setup:
 
 ## Screenshots
 
-Main working view with ChatGPT and the local control panel:
-
-![Second Lane main interface](assets/screenshots/main-interface.png)
-
 Closer look at the chat-driven workflow:
 
 ![Second Lane chat view](assets/screenshots/chat-view.png)
+
+Main working view with ChatGPT and the local control panel:
+
+![Second Lane main interface](assets/screenshots/main-interface.png)
 
 ## Why People Use It
 
