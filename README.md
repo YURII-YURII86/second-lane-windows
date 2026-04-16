@@ -1,30 +1,33 @@
 # Second Lane
 
-> Windows-focused build of the project. This folder is meant to be adapted and tested separately from the main macOS-first version.
+> Windows-focused build of the project. This branch is prepared as a native Windows path and documented separately from the main macOS-first version.
 
-**Когда Claude Code, Codex или другой AI coding-agent упирается в лимиты, Second Lane позволяет не остановиться, а добить задачу внутри ChatGPT.**
+**Когда Claude Code, Codex или другой AI coding-agent упирается в лимиты, Second Lane позволяет не остановиться, а продолжить задачу внутри ChatGPT с реальными действиями над проектом.**
 
-**When Claude Code, Codex, or another AI coding agent hits its limits, Second Lane keeps the work moving inside ChatGPT.**
+**When Claude Code, Codex, or another AI coding agent hits its limits, Second Lane keeps the task moving inside ChatGPT with real project actions.**
 
-**Second Lane даёт ChatGPT реальные руки на твоей машине: читать проект, править код, запускать команды, гонять тесты, проверять результат и продолжать задачу там, где другой агент остановился.**
+**Second Lane даёт ChatGPT реальные руки на твоей машине: читать проект, править код, запускать команды, гонять тесты, проверять результат и продолжать работу там, где другой агент остановился.**
 
-**Second Lane gives ChatGPT real hands on your machine: inspect the project, change code, run commands, run tests, verify results, and continue the task where another agent stopped.**
+**Second Lane gives ChatGPT real hands on your machine: inspect the project, patch code, run commands, run tests, verify results, and continue the work where another agent stopped.**
 
-## Current Status
+## Current Status / Текущий статус
 
-- this folder is the Windows-focused branch prepared for native Windows setup
-- Python `3.13` is the supported local runtime path
-- repo-local verification scripts use `.venv` as the main path
-- native Windows path (`.bat` / `PowerShell` / `gpts_agent_control.py`) is the primary supported path
-- local daemon + `ngrok` + GPT Actions path is the confirmed operator flow
-- `docker-compose.yml` is optional and now uses repo-local mounts instead of machine-specific Linux paths
-- the main folder remains the stable macOS-first branch
+- Windows-first branch prepared for native Windows setup / Windows-first ветка подготовлена под нативный запуск на Windows
+- Python `3.13` is the supported local runtime path / основной поддержанный локальный runtime — Python `3.13`
+- repo-local verification scripts use `.venv` as the main path / repo-local verify-скрипты используют `.venv` как основной путь
+- native Windows path (`.bat` / `PowerShell` / `gpts_agent_control.py`) is the primary supported flow / нативный Windows-путь (`.bat` / `PowerShell` / `gpts_agent_control.py`) является основным поддержанным сценарием
+- local daemon + `ngrok` + GPT Actions is the main operator path / локальный daemon + `ngrok` + GPT Actions — основной рабочий операторский путь
+- `docker-compose.yml` is optional and uses repo-local mounts instead of machine-specific Linux paths / `docker-compose.yml` опционален и использует repo-local mounts вместо machine-specific Linux paths
+- the main folder remains the stable macOS-first branch / основная папка проекта остаётся стабильной macOS-first веткой
+- current codebase is reviewed and locally verified; one real Windows-host validation pass is still recommended / текущая кодовая база отревьюена и локально проверена, но один реальный Windows-host validation pass всё ещё рекомендуется
 
 ---
 
 ## RU
 
 ### Что это такое
+
+Second Lane — это второй рабочий контур для случая, когда основной AI coding-agent уже остановился, а задачу всё ещё нужно довести до результата.
 
 Second Lane нужен для одной очень конкретной боли:
 
@@ -184,6 +187,8 @@ Inspect / patch / test / run / verify / continue
 
 ### Быстрый запуск
 
+Для Windows это главный рекомендуемый путь первого запуска.
+
 Если нужен самый короткий путь без блужданий, открой:
 
 - `docs/WINDOWS_FIRST_START.md`
@@ -301,6 +306,8 @@ bash scripts/run_local_pytest.sh tests/test_super_actions.py
 ## EN
 
 ### What It Is
+
+Second Lane is a second execution lane for the moment when your main AI coding agent has already stopped, but the task still has to reach a result.
 
 Second Lane exists for one specific pain:
 
@@ -452,6 +459,8 @@ Confirmed working path:
 - leave structured handoff for the next session.
 
 ### Quick Start
+
+For Windows users, this is the main recommended first-start path.
 
 If you want the shortest no-guesswork onboarding path, open:
 

@@ -1,7 +1,7 @@
 {
   "project_name": "Second Lane Windows",
   "project_type": "python-fastapi local bridge for GPT Actions",
-  "project_status": "active-reviewed-refactored",
+  "project_status": "active-package-tightened",
   "entrypoints": [
     "app/main.py",
     "gpts_agent_control.py",
@@ -27,6 +27,7 @@
     "tests",
     "scripts",
     "docs",
+    "deploy",
     ".ai_context",
     "workspace",
     ".git"
@@ -38,14 +39,18 @@
   "load_bearing_files": [
     "app/main.py",
     "app/core/config.py",
+    "app/core/project_memory.py",
+    "app/core/utils.py",
     "gpts_agent_control.py",
     "openapi.gpts.yaml",
+    "README.md",
+    "docs/WINDOWS_FIRST_START.md",
     "scripts/verify_local.ps1",
     "scripts/smoke_local.ps1",
     "scripts/verify_local.sh",
     "scripts/smoke_local.sh",
-    "README.md",
-    "docs/WINDOWS_FIRST_START.md",
+    "tests/test_smoke.py",
+    "tests/test_project_memory_smoke.py",
     "tests/test_super_actions.py"
   ],
   "environment_constraints": [
@@ -61,8 +66,8 @@
   ],
   "workflow_constraints": [
     "openapi.gpts.yaml is the GPT-facing action schema",
-    "This branch keeps current-state project memory aligned to this folder",
-    "run_service_and_smoke_check now uses cross-platform stream-reading logic instead of selector-based pipe polling",
-    "git history currently points to the reviewed local main branch state"
+    "The tracked tree now excludes non-operational launch/demo/planning artifacts",
+    "run_service_and_smoke_check uses cross-platform stream-reading logic",
+    "One real Windows-host execution pass is still recommended before calling the branch fully Windows-verified"
   ]
 }

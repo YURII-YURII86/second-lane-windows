@@ -13,5 +13,5 @@
     }
   ],
   "blockers": [],
-  "next_resume_hint": "If resuming, first do the real Windows-host path, then set the GitHub remote and push the current main branch."
+  "next_resume_hint": "If resuming, commit the current cleanup first, then do the real Windows-host path and push the branch."
 }

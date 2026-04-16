@@ -1,5 +1,5 @@
 # Handoff
-- Current state: The branch has now had a second deeper review/refactor pass. Windows control-panel behavior is hardened, service startup detection is more portable, full local verify passes with 22 tests, and smoke is green.
-- Last verified step: Confirmed bash scripts/verify_local.sh -> 22 passed and bash scripts/smoke_local.sh -> smoke passed after the control-panel and backend refactor.
-- Next suggested step: Run the native Windows-host path once (.bat + .ps1 + ngrok), then push main to GitHub.
-- Main risks: A true Windows-host execution pass is still missing in this environment, so Windows-native behavior is reviewed and hardened but not live-validated here., Optional Docker path was aligned structurally, but docker is unavailable in this environment so the container path still lacks live execution evidence.
+- Current state: The Windows package has gone through a full tracked-file audit and tightening pass. The obvious non-operational launch/demo/planning layer was removed, the remaining tracked tree is focused on runtime, onboarding, verification, GPT setup, deploy templates, and current-state operational memory, and verify/smoke are green.
+- Last verified step: Confirmed bash scripts/verify_local.sh -> 22 passed and bash scripts/smoke_local.sh -> smoke passed after removing non-operational files.
+- Next suggested step: Commit the cleanup and then run one native Windows-host validation pass for .bat/.ps1/ngrok.
+- Main risks: A true Windows-host execution pass is still missing in this environment, so Windows-native behavior is reviewed and package-tightened but not live-validated here., Optional Docker path was not live-run here because docker is unavailable in this environment.
