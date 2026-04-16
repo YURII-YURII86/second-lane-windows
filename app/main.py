@@ -88,6 +88,40 @@ def _append_process_log(entry: dict[str, Any], text: str) -> None:
         entry["log_size"] = total
 
 
+_LEGACY_CONSOLE_ENCODINGS = ("cp866", "cp1251")
+
+
+def _decode_process_bytes(chunk: bytes, carry: bytes = b"") -> tuple[str, bytes]:
+    """Decode subprocess stdout bytes with a Windows-friendly fallback cascade.
+
+    Strategy:
+      1. Try strict utf-8. If it succeeds, we are done.
+      2. If utf-8 fails only at the very tail (≤3 trailing bytes), the chunk
+         likely split a multibyte character — return the valid prefix and keep
+         the tail as *carry* for the next read.
+      3. Otherwise try legacy Windows console encodings (cp866 OEM, cp1251 ANSI)
+         that cmd.exe / ping / net use on ru-RU systems.
+      4. As last resort, utf-8 with errors='replace' so we never raise.
+    """
+    buffer = carry + chunk
+    if not buffer:
+        return "", b""
+    try:
+        return buffer.decode("utf-8"), b""
+    except UnicodeDecodeError as exc:
+        # Tail split across read() boundary — keep up to 3 bytes as carry.
+        if exc.start >= len(buffer) - 3 and exc.start > 0 and chunk:
+            head = buffer[: exc.start]
+            tail = buffer[exc.start :]
+            return head.decode("utf-8"), tail
+    for enc in _LEGACY_CONSOLE_ENCODINGS:
+        try:
+            return buffer.decode(enc), b""
+        except UnicodeDecodeError:
+            continue
+    return buffer.decode("utf-8", errors="replace"), b""
+
+
 def _drain_process_output(process_id: int) -> None:
     item = PROCESS_REGISTRY.get(process_id)
     if not item:
@@ -96,9 +130,19 @@ def _drain_process_output(process_id: int) -> None:
     if proc.stdout is None:
         item["stdout_closed"] = True
         return
+    carry = b""
     try:
-        for line in proc.stdout:
-            _append_process_log(item, line)
+        while True:
+            chunk = proc.stdout.read(4096)
+            if not chunk:
+                break
+            text, carry = _decode_process_bytes(chunk, carry)
+            if text:
+                _append_process_log(item, text)
+        if carry:
+            tail, _ = _decode_process_bytes(b"", carry)
+            if tail:
+                _append_process_log(item, tail)
     finally:
         item["stdout_closed"] = True
 
@@ -491,14 +535,56 @@ def _inspect_project(path: Path) -> dict[str, Any]:
 
 def _classify_failure(output: str) -> str:
     lowered = output.lower()
+    # Dependency / import problems
     if "module not found" in lowered or "no module named" in lowered:
         return "missing dependency"
-    if "syntaxerror" in lowered:
+    if "importerror" in lowered or "cannot import name" in lowered:
+        return "import error"
+    if "cannot find module" in lowered:
+        return "missing dependency"
+    # Syntax / parse
+    if "syntaxerror" in lowered or "indentationerror" in lowered or "taberror" in lowered:
         return "syntax error"
-    if "permission denied" in lowered:
+    if "parse error" in lowered or "parsing error" in lowered:
+        return "syntax error"
+    # Filesystem / permissions / executables
+    if "permission denied" in lowered or "eacces" in lowered:
         return "permission issue"
-    if "address already in use" in lowered:
+    if "command not found" in lowered or "is not recognized as an internal or external command" in lowered:
+        return "missing executable"
+    if "no such file or directory" in lowered or "enoent" in lowered:
+        return "missing file"
+    # Network / ports
+    if "address already in use" in lowered or "eaddrinuse" in lowered:
         return "port already in use"
+    if "connection refused" in lowered or "econnrefused" in lowered:
+        return "connection refused"
+    if "connection timed out" in lowered or "etimedout" in lowered:
+        return "network timeout"
+    # Test frameworks
+    if "assertionerror" in lowered:
+        return "assertion failure"
+    if "failed" in lowered and ("pytest" in lowered or "=== failures ===" in lowered or "short test summary info" in lowered):
+        return "test failure"
+    if "tests failed" in lowered or "jest" in lowered and "fail" in lowered:
+        return "test failure"
+    # Runtime
+    if "traceback (most recent call last)" in lowered:
+        return "runtime exception"
+    if "segmentation fault" in lowered or "core dumped" in lowered:
+        return "segfault"
+    if "out of memory" in lowered or "memoryerror" in lowered:
+        return "out of memory"
+    # Build tools
+    if "npm err!" in lowered or "yarn error" in lowered:
+        return "build tool failure"
+    if "error ts" in lowered or ": error ts" in lowered:
+        return "typescript error"
+    if "make: ***" in lowered or "makefile:" in lowered and "error" in lowered:
+        return "build tool failure"
+    # Silent non-zero exit
+    if not lowered.strip():
+        return "silent failure"
     return "unknown"
 
 
@@ -924,7 +1010,17 @@ def run_service_and_smoke_check(req: RunServiceReq, _auth: None = Depends(auth_d
                 time.sleep(req.startup_wait_sec)
             started = proc.poll() is None
         smoke = run_subprocess(req.smoke_argv, smoke_cwd, req.smoke_timeout_sec, settings.max_output_chars)
-        return {"ok": started and smoke["ok"], "started": started, "service_output": lines[-50:], "smoke": smoke}
+        # Readiness fallback: a successful smoke check is a ground-truth proof that the service is up,
+        # even if startup_text was never captured (e.g. stderr-only logs, buffering, wrong marker).
+        readiness = "startup_text" if started else ("smoke_check" if smoke["ok"] else None)
+        started = started or smoke["ok"]
+        return {
+            "ok": started and smoke["ok"],
+            "started": started,
+            "readiness": readiness,
+            "service_output": lines[-50:],
+            "smoke": smoke,
+        }
     finally:
         if proc.poll() is None:
             proc.terminate()
@@ -1064,7 +1160,11 @@ def run_command(req: ExecReq, _auth: None = Depends(auth_dependency)) -> dict[st
 def start_command(req: ExecReq, _auth: None = Depends(auth_dependency)) -> dict[str, Any]:
     cwd = resolve_allowed_path(settings, req.cwd)
     try:
-        proc = subprocess.Popen(req.argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        # text=False + manual cascade decoding: Windows consoles (cmd.exe, ping, net...)
+        # emit OEM-encoded bytes (cp866 on ru-RU) while Python's default text mode
+        # assumes the ANSI/locale codepage. Reading as bytes lets us try utf-8 → cp866
+        # → cp1251 and keep Cyrillic logs readable.
+        proc = subprocess.Popen(req.argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=False, bufsize=0)
     except FileNotFoundError as exc:
         message = f"command not found: {exc.filename or req.argv[0]}"
         return {
@@ -1125,15 +1225,41 @@ def stop_command(req: ProcessReq, _auth: None = Depends(auth_dependency)) -> dic
     return {"ok": True, "process_id": req.process_id}
 
 
+def _find_git_root(cwd: Path) -> Path | None:
+    """Walk up from cwd looking for a .git directory/file. Returns the repo root or None."""
+    current = cwd.resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _not_a_repo_response(cwd: Path) -> dict[str, Any]:
+    message = f"not a git repository: {cwd}"
+    return {
+        "ok": False,
+        "not_a_repo": True,
+        "returncode": None,
+        "stdout": "",
+        "stderr": message,
+        "output": message,
+        "cwd": str(cwd),
+    }
+
+
 @app.post("/v1/git/status", operation_id="gitStatus")
 def git_status(req: GitReq, _auth: None = Depends(auth_dependency)) -> dict[str, Any]:
     cwd = resolve_allowed_path(settings, req.cwd)
+    if _find_git_root(cwd) is None:
+        return _not_a_repo_response(cwd)
     return run_subprocess(["git", "status", "--short"], cwd, settings.default_timeout_sec, settings.max_output_chars)
 
 
 @app.post("/v1/git/diff", operation_id="gitDiff")
 def git_diff(req: GitReq, _auth: None = Depends(auth_dependency)) -> dict[str, Any]:
     cwd = resolve_allowed_path(settings, req.cwd)
+    if _find_git_root(cwd) is None:
+        return _not_a_repo_response(cwd)
     return run_subprocess(["git", "diff"], cwd, settings.default_timeout_sec, settings.max_output_chars)
 
 
