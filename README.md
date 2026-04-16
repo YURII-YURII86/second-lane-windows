@@ -123,13 +123,17 @@ That makes it useful not only as a backup when another agent hits a limit, but a
 
 ### Fastest Setup Through Codex
 
-If you already use Codex, the easiest path is to give it the Windows setup skill and let it do almost everything for you.
-
-Use this skill:
+Just feed this file to Codex:
 
 `codex-skills/gpts-windows-autopilot/SKILL.md`
 
-What happens next in simple words:
+And tell it:
+
+```text
+Deploy Second Lane for me.
+```
+
+After that, Codex will do almost everything on its own:
 
 - Codex checks the project structure
 - verifies Python 3.13
@@ -148,7 +152,7 @@ You only need to step in for real human-only actions:
 - payment
 - system permission dialogs
 
-Example prompt for Codex:
+Expanded prompt if you want to be more explicit:
 
 ```text
 Use this skill and set up Second Lane on Windows for me:
