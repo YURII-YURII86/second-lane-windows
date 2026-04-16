@@ -18,17 +18,24 @@ Built by [Yurii Slepnev](https://t.me/yurii_yurii86) · [YouTube](https://youtub
 
 See the Windows version in action before you read the setup:
 
-![Second Lane Windows demo](assets/demo/secondary-lane-demo.gif)
+<p align="center">
+  <img src="assets/demo/secondary-lane-demo.gif" alt="Second Lane Windows demo" width="100%">
+</p>
 
 ## Screenshots
 
-Closer look at the chat-driven workflow:
-
-![Second Lane chat view](assets/screenshots/chat-view.png)
-
-Main working view with ChatGPT and the local control panel:
-
-![Second Lane main interface](assets/screenshots/main-interface.png)
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="assets/screenshots/chat-view.png" alt="Second Lane chat view" width="100%">
+      <p><strong>Chat-driven workflow</strong><br>How the task moves inside the normal ChatGPT interface.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="assets/screenshots/main-interface.png" alt="Second Lane main interface" width="100%">
+      <p><strong>Control panel and local runtime</strong><br>ChatGPT on one side, local execution layer on the other.</p>
+    </td>
+  </tr>
+</table>
 
 ## Strongest Use Case
 
