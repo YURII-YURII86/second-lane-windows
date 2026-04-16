@@ -121,9 +121,19 @@ That makes Secondary LANE useful not only as a backup when another agent hits a 
 
 ## Quick Start (Windows)
 
-### Fastest Setup Through Codex (or Claude Code)
+Before you start, you need **three things** installed / created once:
 
-Pass this file to Codex or Claude Code:
+1. **Python 3.13** for Windows — [python.org/downloads/windows](https://www.python.org/downloads/windows/) (tick "Add python.exe to PATH")
+2. **ngrok** account + a reserved free domain — [dashboard.ngrok.com](https://dashboard.ngrok.com) (free tier is enough)
+3. **ChatGPT Plus** (or any plan that supports Custom GPTs with Actions)
+
+Then pick one of two paths.
+
+### Path A — Let an agent do it (Codex / Claude Code)
+
+If you already have **Codex or Claude Code** installed, this is the fastest.
+
+Pass this file to the agent:
 
 `codex-skills/gpts-windows-autopilot/SKILL.md`
 
@@ -133,50 +143,48 @@ And say:
 Deploy Secondary LANE for me.
 ```
 
-After that, the agent can do almost everything on its own:
+The agent will check Python, help with ngrok, fill `.env`, launch the panel, verify the tunnel, and walk you through GPT setup. You only step in for login, captcha, email confirmation, or payment.
 
-- check the project structure
-- verify Python 3.13
-- verify or help install `ngrok`
-- help fill `.env`
-- launch the panel
-- verify the tunnel and `openapi.gpts.yaml`
-- walk you through GPT setup in ChatGPT
+### Path B — Manual install (no agent needed)
 
-You only need to step in for true human-only actions:
+If you **don't have Codex/Claude Code**, follow the step-by-step beginner guide:
 
-- login
-- registration
-- captcha
-- email confirmation
-- payment
-- system permission dialogs
+**[docs/WINDOWS_FIRST_START.md](docs/WINDOWS_FIRST_START.md)** — full guide with screenshots and explanations.
+
+Short version if you are comfortable with a terminal:
 
 ```powershell
+# 1. Create config from template and edit it
 Copy-Item .env.example .env
-# Set AGENT_TOKEN (long random secret)
-# Set NGROK_DOMAIN (free domain from dashboard.ngrok.com)
+notepad .env
+# In .env set AGENT_TOKEN (a long random secret) and NGROK_DOMAIN
+# (your reserved domain from dashboard.ngrok.com, without "https://")
+
+# 2. Install dependencies
+py -3.13 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+
+# 3. Launch the control panel
 py -3.13 gpts_agent_control.py
 ```
 
-Or just double-click `Запустить GPTS Agent.bat`.
+Or just **double-click `Запустить GPTS Agent.bat`** — it does the launch step for you.
 
-Step-by-step guide for beginners: [docs/WINDOWS_FIRST_START.md](docs/WINDOWS_FIRST_START.md)
-
-### Manual Environment Setup
-
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-```
+> Generate a strong `AGENT_TOKEN` with:
+> `py -3.13 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
 ## Connect Your GPT
 
-1. Import `openapi.gpts.yaml` into GPT Actions
-2. Set the bearer token from `.env`
-3. Paste `gpts/system_instructions.txt` into GPT instructions
-4. Upload `gpts/knowledge/` into GPT knowledge
-5. Test the first calls: `getCapabilities` -> `inspectProject` -> `runTest`
+After the control panel is running and the ngrok tunnel is up:
+
+1. Open ChatGPT → **Create a GPT** → switch to the **Configure** tab
+2. **Instructions** — paste contents of [`gpts/system_instructions.txt`](gpts/system_instructions.txt)
+3. **Knowledge** — upload every file from [`gpts/knowledge/`](gpts/knowledge/)
+4. **Actions** → **Create new action** → paste the content of [`openapi.gpts.yaml`](openapi.gpts.yaml)
+5. **Authentication** → type **API Key**, auth type **Bearer**, paste the raw value of `AGENT_TOKEN` from your `.env` (without the word `Bearer`)
+6. Run the first checks in preview: `getCapabilities` → `inspectProject` → `runTest`
+
+Step-by-step guide with screenshots: [gpts/ACTIONS_SETUP.md](gpts/ACTIONS_SETUP.md).
 
 ## What GPT Can Actually Do Through Secondary LANE
 
@@ -230,9 +238,9 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke_local.ps1
 
 ## Requirements
 
-- Python 3.13
-- `ngrok` (the free tier works)
-- ChatGPT Plus or another plan with GPTs and Actions support
+- **Python 3.13** for Windows (3.12 works as a fallback; 3.14 not yet tested with pinned `pydantic 2.9.2`)
+- **`ngrok`** with a free account — create an **authtoken** and a **reserved domain** at [dashboard.ngrok.com](https://dashboard.ngrok.com) before first launch
+- **ChatGPT Plus** or any plan that supports Custom GPTs with Actions
 
 ## License
 

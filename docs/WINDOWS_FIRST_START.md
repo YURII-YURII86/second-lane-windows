@@ -3,6 +3,52 @@
 Secondary LANE by **Yurii Slepnev** · Apache-2.0  
 Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
 
+---
+
+## ⚡ Быстрый путь за 15 шагов
+
+Если хочется просто пройти как по рельсам — вот весь путь списком. У каждого шага ниже есть подробная секция с пояснениями, скриншотами и типовыми ошибками — если где-то зависаешь, читай детали.
+
+**Что нужно иметь заранее:**
+- Компьютер с Windows 10 или 11
+- Интернет
+- Аккаунт ChatGPT (любой план с поддержкой Custom GPTs и Actions)
+- Почта, на которую сможешь принять письмо от ngrok
+
+**Установка один раз:**
+
+1. **Скачай и установи Python 3.13**: [python.org/downloads/windows](https://www.python.org/downloads/windows/). При установке **обязательно поставь галку «Add python.exe to PATH»**. Перезагрузи компьютер.
+2. **Скачай и установи ngrok**: [ngrok.com/download](https://ngrok.com/download). Запусти установщик.
+3. **Зарегистрируйся на ngrok**: [dashboard.ngrok.com/signup](https://dashboard.ngrok.com/signup). Подтверди почту.
+4. **Скопируй authtoken** из [dashboard.ngrok.com/get-started/your-authtoken](https://dashboard.ngrok.com/get-started/your-authtoken) и выполни в cmd: `ngrok config add-authtoken ВСТАВЬ_ТОКЕН_СЮДА`.
+5. **Создай бесплатный reserved domain**: [dashboard.ngrok.com/domains](https://dashboard.ngrok.com/domains) → **+ New Domain**. Скопируй имя домена целиком (например `something-unique-1234.ngrok-free.dev`).
+
+**Настройка проекта (один раз):**
+
+6. **Положи папку Secondary LANE** туда, где тебе удобно. Самое простое место: `C:\SecondLane`. Путь не должен содержать пробелов в начале.
+7. **Скопируй `.env.example` в `.env`**: открой папку проекта, правой кнопкой по `.env.example` → «Копировать», «Вставить», переименуй копию в `.env`.
+8. **Открой `.env` в блокноте** и заполни три значения:
+   - `AGENT_TOKEN` — длинный случайный секрет. Сгенерируй командой в cmd: `py -3.13 -c "import secrets; print(secrets.token_urlsafe(48))"` и вставь результат.
+   - `NGROK_DOMAIN` — домен из шага 5, **без** `https://`.
+   - `WORKSPACE_ROOTS` — **первой строкой** путь к твоей папке проекта, например `C:\SecondLane`. Если там есть другие папки с кодом, которые должен видеть агент — добавь их через `;`.
+
+**Запуск:**
+
+9. **Двойной клик по `Запустить GPTS Agent.bat`** в корне проекта. Откроется панель управления. Дождись, пока в ней появится статус «tunnel is up» и публичный URL вида `https://...ngrok-free.dev`.
+10. **Проверь `openapi.gpts.yaml`**: открой этот файл в блокноте в корне проекта. В секции `servers:` должен быть твой реальный публичный URL, а не шаблон. Если остался шаблон — перезапусти `.bat`.
+
+**Подключение GPT:**
+
+11. **Создай GPT**: [chatgpt.com/gpts/editor](https://chatgpt.com/gpts/editor) → вкладка **Configure**.
+12. **Instructions** — вставь содержимое файла `gpts/system_instructions.txt` (открой блокнотом, выдели всё, скопируй).
+13. **Knowledge** — нажми **Upload files** и загрузи **все** файлы из папки `gpts/knowledge/`.
+14. **Actions** → **Create new action** → в поле **Schema** вставь содержимое `openapi.gpts.yaml`. В **Authentication** выбери **API Key**, тип **Bearer**, вставь **только значение** `AGENT_TOKEN` из `.env` (БЕЗ слова `Bearer` и без `=`).
+15. **Проверь в Preview**: напиши GPT «вызови getCapabilities» — должен вернуть JSON с возможностями. Если работает — **всё, готово**.
+
+Если какой-то шаг завис — открой подробную секцию ниже (она для того же шага, но с разбором что и почему).
+
+---
+
 ## RU
 
 ### Зачем нужен этот документ

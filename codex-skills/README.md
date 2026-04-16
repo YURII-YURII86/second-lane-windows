@@ -62,4 +62,6 @@ C:\SecondLane
 
 Если хочешь делать всё без Codex или проверить его шаги руками, открой:
 
-- `..\docs\WINDOWS_FIRST_START.md`
+- [`docs/WINDOWS_FIRST_START.md`](../docs/WINDOWS_FIRST_START.md)
+
+Там пошаговый гайд для установки с нуля без агента.

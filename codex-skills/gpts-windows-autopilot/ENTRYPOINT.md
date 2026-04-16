@@ -8,30 +8,28 @@ Get a beginner Windows user from “project not set up” to “working GPT with
 
 ## First-run load order
 
-Open these files in this order:
+**Always run adaptive detection first**, do not assume paths:
 
-1. `SKILL.md`
-2. `references/01-human-gates.md`
-3. `references/02-browser-protocol.md`
-4. `references/03-state-machine.md`
-5. `references/04-gpt-builder-map.md`
-6. `references/05-verification-checklist.md`
-7. `references/07-scripted-mode.md`
-8. `references/08-master-prompt.md`
-9. `references/13-adaptive-project-detection.md`
-10. `references/14-adaptive-artifact-detection.md`
+1. run `scripts/discover_secondarylane_layout.py` (find the Windows branch root even if the folder was renamed or moved)
+2. if something looks off after that, run `scripts/discover_secondarylane_artifacts.py`
 
-Open `references/06-recovery-playbook.md` only if something broke or the user returns after an interruption.
+Then load the **minimum** bootstrap:
 
-Then choose the closest runbook if one clearly matches:
+3. `SKILL.md`
+4. `references/01-human-gates.md`
+5. `references/03-state-machine.md`
 
-- `references/09-runbook-clean-windows.md`
-- `references/10-runbook-existing-python-ngrok.md`
-- `references/11-runbook-panel-ok-gpt-not-built.md`
-- `references/12-runbook-gpt-exists-but-broken.md`
+Load the rest **on demand**, only when the current step actually needs it:
 
-If the expected Windows branch path is missing or renamed, run adaptive detection before choosing a runbook.
-If the branch exists but important files seem to have moved or been renamed, run adaptive artifact detection before assuming they are gone.
+- `references/02-browser-protocol.md` — before opening any browser URL
+- `references/04-gpt-builder-map.md` — before S8 (GPT builder)
+- `references/05-verification-checklist.md` — at the S12/S13 final pass
+- `references/07-scripted-mode.md` — when PowerShell is available on the host
+- `references/08-master-prompt.md` — if the full master prompt is needed
+- `references/13-adaptive-project-detection.md` — if step 1 returned nothing
+- `references/14-adaptive-artifact-detection.md` — if artifacts look out of place
+- one of `references/09-runbook-clean-windows.md`, `references/10-runbook-existing-python-ngrok.md`, `references/11-runbook-panel-ok-gpt-not-built.md`, `references/12-runbook-gpt-exists-but-broken.md` — after state detection (S0)
+- `references/06-recovery-playbook.md` — only if the flow broke or the user is resuming after an interruption
 
 ## First reply rule
 

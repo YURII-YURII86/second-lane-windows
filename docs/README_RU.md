@@ -121,9 +121,19 @@ Secondary LANE — это локальный сервер, который под
 
 ## Быстрый старт (Windows)
 
-### Самая быстрая настройка через Codex (или Claude Code)
+До начала надо **три вещи** (настраиваются один раз):
 
-Передай этот файл в Codex или Claude Code:
+1. **Python 3.13** для Windows — [python.org/downloads/windows](https://www.python.org/downloads/windows/) (поставь галку «Add python.exe to PATH» при установке)
+2. **Аккаунт ngrok** + зарезервированный бесплатный домен — [dashboard.ngrok.com](https://dashboard.ngrok.com) (бесплатный тариф подходит)
+3. **ChatGPT Plus** (или любой тариф с поддержкой Custom GPTs и Actions)
+
+Дальше выбирай один из двух путей.
+
+### Путь А — агент делает всё сам (Codex / Claude Code)
+
+Если у тебя уже установлен **Codex или Claude Code** — это самый быстрый способ.
+
+Передай агенту файл:
 
 `codex-skills/gpts-windows-autopilot/SKILL.md`
 
@@ -133,50 +143,48 @@ Secondary LANE — это локальный сервер, который под
 Разверни мне Secondary LANE.
 ```
 
-После этого агент сам сделает почти всё:
+Агент сам проверит Python, поможет с ngrok, заполнит `.env`, запустит панель, проверит туннель и проведёт тебя через создание GPT. Тебе нужно вмешаться только там, где без человека никак: логин, капча, подтверждение почты, оплата.
 
-- проверит структуру проекта
-- проверит Python 3.13
-- проверит или поможет установить `ngrok`
-- поможет заполнить `.env`
-- запустит панель
-- проверит туннель и `openapi.gpts.yaml`
-- пошагово проведёт настройку GPT в ChatGPT
+### Путь Б — ручная установка (без агента)
 
-Тебе нужно вмешаться только там, где без человека никак:
+Если **Codex/Claude Code нет** — открой пошаговый гайд для новичков:
 
-- логин
-- регистрация
-- капча
-- подтверждение почты
-- оплата
-- системные диалоги разрешений
+**[docs/WINDOWS_FIRST_START.md](WINDOWS_FIRST_START.md)** — полная инструкция со скриншотами и пояснениями.
+
+Короткая версия для тех, кто уверенно работает в терминале:
 
 ```powershell
+# 1. Создай конфиг из шаблона и отредактируй его
 Copy-Item .env.example .env
-# Заполни AGENT_TOKEN (длинный случайный секрет)
-# Заполни NGROK_DOMAIN (бесплатный домен из dashboard.ngrok.com)
+notepad .env
+# В .env задай AGENT_TOKEN (длинный случайный секрет) и NGROK_DOMAIN
+# (твой зарезервированный домен из dashboard.ngrok.com, БЕЗ "https://")
+
+# 2. Поставь зависимости
+py -3.13 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+
+# 3. Запусти панель управления
 py -3.13 gpts_agent_control.py
 ```
 
-Или просто дважды нажми `Запустить GPTS Agent.bat`.
+Или просто **дважды нажми `Запустить GPTS Agent.bat`** — он сам выполнит шаг запуска.
 
-Подробная пошаговая инструкция для новичков: [WINDOWS_FIRST_START.md](WINDOWS_FIRST_START.md)
-
-### Ручная подготовка окружения
-
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-```
+> Сгенерировать надёжный `AGENT_TOKEN` можно так:
+> `py -3.13 -c "import secrets; print(secrets.token_urlsafe(48))"`
 
 ## Как подключить GPT
 
-1. Импортируй `openapi.gpts.yaml` в GPT Actions
-2. Укажи bearer token из `.env`
-3. Вставь `gpts/system_instructions.txt` в instructions GPT
-4. Загрузи `gpts/knowledge/` в knowledge GPT
-5. Проверь первые вызовы: `getCapabilities` -> `inspectProject` -> `runTest`
+После того как панель управления запущена и туннель ngrok поднялся:
+
+1. Открой ChatGPT → **Create a GPT** → перейди на вкладку **Configure**
+2. **Instructions** — вставь содержимое [`gpts/system_instructions.txt`](../gpts/system_instructions.txt)
+3. **Knowledge** — загрузи все файлы из [`gpts/knowledge/`](../gpts/knowledge/)
+4. **Actions** → **Create new action** → вставь содержимое [`openapi.gpts.yaml`](../openapi.gpts.yaml)
+5. **Authentication** → выбери **API Key**, тип **Bearer**, вставь чистое значение `AGENT_TOKEN` из `.env` (БЕЗ слова `Bearer`)
+6. В preview прогони первые проверки: `getCapabilities` → `inspectProject` → `runTest`
+
+Подробный гайд со скриншотами: [gpts/ACTIONS_SETUP.md](../gpts/ACTIONS_SETUP.md).
 
 ## Что GPT реально умеет через Secondary LANE
 
@@ -230,9 +238,9 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke_local.ps1
 
 ## Требования
 
-- Python 3.13
-- `ngrok` (подходит и бесплатный тариф)
-- ChatGPT Plus или другой план с поддержкой GPTs и Actions
+- **Python 3.13** для Windows (3.12 работает как fallback; 3.14 пока не тестировался с pinned `pydantic 2.9.2`)
+- **`ngrok`** с бесплатным аккаунтом — до первого запуска создай **authtoken** и **зарезервированный домен** в [dashboard.ngrok.com](https://dashboard.ngrok.com)
+- **ChatGPT Plus** или любой план с поддержкой Custom GPTs и Actions
 
 ## Лицензия
 

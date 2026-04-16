@@ -9,20 +9,34 @@ Use this skill when the user wants a near-fully-automated Windows setup of the G
 
 ## Mandatory start
 
-Before doing substantial work:
+Before doing substantial work, **always** run the adaptive project
+detector first so you do not waste a turn guessing paths or assume the
+project is broken because a folder was renamed:
 
-1. open `ENTRYPOINT.md`
-2. open `references/01-human-gates.md`
-3. open `references/02-browser-protocol.md`
-4. open `references/03-state-machine.md`
-5. open `references/04-gpt-builder-map.md`
-6. open `references/05-verification-checklist.md`
-7. open `references/07-scripted-mode.md`
-8. open `references/08-master-prompt.md`
-9. open `references/13-adaptive-project-detection.md`
-10. open `references/14-adaptive-artifact-detection.md`
-11. choose the closest runbook from `references/09-runbook-clean-windows.md`, `references/10-runbook-existing-python-ngrok.md`, `references/11-runbook-panel-ok-gpt-not-built.md`, `references/12-runbook-gpt-exists-but-broken.md`
-12. open `references/06-recovery-playbook.md` only if the flow breaks
+1. run `scripts/discover_secondarylane_layout.py` to find the real
+   Windows branch root (do not rely on the literal name
+   `Версия для Виндовс` — it may have been renamed, translated, or
+   unpacked into a different parent folder)
+2. if the branch root is known but artifacts seem missing, run
+   `scripts/discover_secondarylane_artifacts.py`
+
+Then load the **minimum** bootstrap to take the first concrete action:
+
+3. open `ENTRYPOINT.md`
+4. open `references/01-human-gates.md`
+5. open `references/03-state-machine.md`
+
+Load the rest **on demand**, only when the situation calls for it:
+
+- `references/02-browser-protocol.md` — before you open any browser URL
+- `references/04-gpt-builder-map.md` — before step S8 (GPT builder)
+- `references/05-verification-checklist.md` — at the final S12/S13 pass
+- `references/07-scripted-mode.md` — when you have PowerShell access on the host
+- `references/08-master-prompt.md` — if you need the full master prompt
+- `references/13-adaptive-project-detection.md` — if the detector in step 1 returned nothing
+- `references/14-adaptive-artifact-detection.md` — if artifacts look out of place
+- the closest runbook from `references/09…12` — after you have determined the current state (S0)
+- `references/06-recovery-playbook.md` — **only** if the flow broke or the user is resuming after an interruption
 
 Do not replace this with a broad repository review.
 
