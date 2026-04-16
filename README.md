@@ -123,11 +123,11 @@ That makes it useful not only as a backup when another agent hits a limit, but a
 
 ### Fastest Setup Through Codex
 
-Just feed this file to Codex:
+Pass this file to Codex or Claude Code:
 
 `codex-skills/gpts-windows-autopilot/SKILL.md`
 
-And tell it:
+And say:
 
 ```text
 Deploy Second Lane for me.
