@@ -1,3 +1,8 @@
+#!/usr/bin/env pwsh
+# Second Lane
+# Copyright (c) 2026 Yurii Slepnev
+# Licensed under the Apache License, Version 2.0.
+# Official: https://t.me/yurii_yurii86 | https://youtube.com/@yurii_yurii86 | https://instagram.com/yurii_yurii86
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 

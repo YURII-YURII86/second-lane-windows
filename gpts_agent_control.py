@@ -1,5 +1,9 @@
+# Second Lane
+# Copyright (c) 2026 Yurii Slepnev
+# Licensed under the Apache License, Version 2.0.
+# Official: https://t.me/yurii_yurii86 | https://youtube.com/@yurii_yurii86 | https://instagram.com/yurii_yurii86
 # /// CONTEXT_BLOCK
-# ID: ufa_local_control_panel
+# ID: second_lane_control_panel
 # TYPE: interface
 # PURPOSE: Local operator panel for starting, stopping, and observing the daemon and public tunnel.
 # DEPENDS_ON: [.env, openapi.gpts.yaml, .venv]
@@ -23,6 +27,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import BOTH, END, LEFT, Button, Frame, Label, StringVar, Text, Tk
+import yaml
 
 try:
     import certifi
@@ -40,9 +45,9 @@ VENV_DIR = PROJECT_DIR / ".venv"
 VENV_UVICORN = VENV_DIR / ("Scripts/uvicorn.exe" if IS_WINDOWS else "bin/uvicorn")
 LOCAL_URL = "http://127.0.0.1:8787"
 DEFAULT_WORKSPACE_ROOTS = (
-    r"C:\Projects;D:\Workspace"
+    os.pathsep.join([str(PROJECT_DIR), r"C:\Projects", r"D:\Workspace"])
     if IS_WINDOWS
-    else "/workspace:/projects"
+    else os.pathsep.join([str(PROJECT_DIR), "/workspace", "/projects"])
 )
 
 # --- Tunnel defaults ---
@@ -76,7 +81,7 @@ class LocalDaemonProcess:
 class ControlPanel:
     def __init__(self) -> None:
         self.root = Tk()
-        self.root.title("GPTS Agent Control")
+        self.root.title("Second Lane Control")
         self.root.geometry("860x560")
 
         self.agent_proc: subprocess.Popen | None = None
@@ -101,7 +106,8 @@ class ControlPanel:
     # --- UI ---
 
     def _build_ui(self) -> None:
-        Label(self.root, text="GPTS Agent Control", font=("Helvetica", 22, "bold")).pack(pady=(16, 8))
+        Label(self.root, text="Second Lane Control", font=("Helvetica", 22, "bold")).pack(pady=(16, 8))
+        Label(self.root, text="by Yurii Slepnev", font=("Helvetica", 11)).pack(pady=(0, 4))
         Label(self.root, textvariable=self.agent_status, font=("Helvetica", 14)).pack(pady=4)
         Label(self.root, textvariable=self.tunnel_url, font=("Helvetica", 14), wraplength=780).pack(pady=4)
 
@@ -121,6 +127,11 @@ class ControlPanel:
         self.log = Text(self.root, height=20, wrap="word")
         self.log.pack(fill=BOTH, expand=True, padx=16, pady=(8, 16))
         self.write_log(
+            "Second Lane by Yurii Slepnev\n"
+            "Telegram: https://t.me/yurii_yurii86\n"
+            "YouTube: https://youtube.com/@yurii_yurii86\n"
+            "Instagram: https://instagram.com/yurii_yurii86\n"
+            "Licensed under Apache-2.0\n\n"
             "Открой это окно и нажми «Запустить». Потом вставь compact-схему openapi.gpts.yaml в GPT Actions.\n"
         )
 
@@ -149,8 +160,8 @@ class ControlPanel:
 
     def agent_token_is_safe(self) -> bool:
         token = self.agent_token().strip()
-        weak_tokens = {"", "change-me", "changeme", "default", "token"}
-        return token not in weak_tokens
+        weak_tokens = {"", "change-me", "changeme", "default", "token", "replace-this-with-a-long-random-secret-token"}
+        return token not in weak_tokens and len(token) >= 24
 
     def explain_unsafe_token(self) -> None:
         self.write_log(
@@ -600,12 +611,15 @@ class ControlPanel:
             return
         elif self._local_daemon_ready() and not self._current_project_owns_port_8787():
             if IS_WINDOWS:
-                self._using_external_daemon = True
                 self.write_log(
-                    "На 127.0.0.1:8787 уже отвечает живой демон.\n"
-                    "На Windows панель не всегда может надёжно определить владельца порта, "
-                    "поэтому использую существующий процесс и не трогаю его автоматически.\n"
+                    "На 127.0.0.1:8787 уже отвечает живой процесс, но панель не подтвердила, "
+                    "что это именно текущий проект.\n"
+                    "Из соображений безопасности не запускаю туннель к неподтверждённому сервису.\n"
+                    "Что сделать: освободи порт 8787 или перезапусти демон текущего проекта, "
+                    "а потом снова нажми «Запустить».\n"
                 )
+                self.agent_status.set("Демон: порт 8787 занят неподтверждённым процессом")
+                return
             elif not self._stop_foreign_daemon_on_8787():
                 self.write_log(
                     "Не смог освободить порт 8787 от старого проекта.\n"
@@ -739,8 +753,30 @@ class ControlPanel:
             if not openapi_file.exists():
                 continue
             text = openapi_file.read_text("utf-8")
-            text = re.sub(r"  - url: https://[^\n]+", f"  - url: {url}", text, count=1)
-            openapi_file.write_text(text, "utf-8")
+            updated_text = None
+            try:
+                payload = yaml.safe_load(text) or {}
+            except yaml.YAMLError:
+                payload = None
+
+            if isinstance(payload, dict):
+                servers = payload.get("servers")
+                if isinstance(servers, list) and servers and isinstance(servers[0], dict):
+                    old_url = str(servers[0].get("url", "")).strip()
+                    servers[0]["url"] = url
+                    if old_url:
+                        # Prefer a surgical text update so comments and most formatting stay intact.
+                        pattern = rf"(^\s*-\s+url:\s*[\"']?){re.escape(old_url)}([\"']?\s*$)"
+                        candidate, count = re.subn(pattern, rf"\1{url}\2", text, count=1, flags=re.MULTILINE)
+                        if count:
+                            updated_text = candidate
+                    if updated_text is None:
+                        updated_text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+
+            if updated_text is None:
+                updated_text = re.sub(r"(^\s*-\s+url:\s*)https://[^\n]+", rf"\1{url}", text, count=1, flags=re.MULTILINE)
+
+            openapi_file.write_text(updated_text, "utf-8")
 
     def stop_all(self) -> None:
         self._tunnel_restart_count = self._tunnel_max_restarts  # prevent auto-restart during shutdown
@@ -776,7 +812,10 @@ class ControlPanel:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.terminate()
-            proc.wait(timeout=5)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
     # --- Health checks ---
 

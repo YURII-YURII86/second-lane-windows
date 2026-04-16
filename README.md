@@ -1,557 +1,189 @@
-# Second Lane
+# Second Lane for Windows
 
-> Windows-focused build of the project. This branch is prepared as a native Windows path and documented separately from the main macOS-first version.
+**Turn ChatGPT into a real coding agent. Local. Any language.**
 
-**Когда Claude Code, Codex или другой AI coding-agent упирается в лимиты, Second Lane позволяет не остановиться, а продолжить задачу внутри ChatGPT с реальными действиями над проектом.**
+Second Lane gives ChatGPT real actions on your machine: inspect code, patch files, run tests, start services, verify results, and keep project memory between sessions.
 
-**When Claude Code, Codex, or another AI coding agent hits its limits, Second Lane keeps the task moving inside ChatGPT with real project actions.**
+Built on official ChatGPT features: GPTs, Actions, instructions, and knowledge.
 
-**Second Lane даёт ChatGPT реальные руки на твоей машине: читать проект, править код, запускать команды, гонять тесты, проверять результат и продолжать работу там, где другой агент остановился.**
+Built by [Yurii Slepnev](https://t.me/yurii_yurii86) · [YouTube](https://youtube.com/@yurii_yurii86) · [Instagram](https://instagram.com/yurii_yurii86) · Apache-2.0
 
-**Second Lane gives ChatGPT real hands on your machine: inspect the project, patch code, run commands, run tests, verify results, and continue the work where another agent stopped.**
-
-## Current Status / Текущий статус
-
-- Windows-first branch prepared for native Windows setup / Windows-first ветка подготовлена под нативный запуск на Windows
-- Python `3.13` is the supported local runtime path / основной поддержанный локальный runtime — Python `3.13`
-- repo-local verification scripts use `.venv` as the main path / repo-local verify-скрипты используют `.venv` как основной путь
-- native Windows path (`.bat` / `PowerShell` / `gpts_agent_control.py`) is the primary supported flow / нативный Windows-путь (`.bat` / `PowerShell` / `gpts_agent_control.py`) является основным поддержанным сценарием
-- local daemon + `ngrok` + GPT Actions is the main operator path / локальный daemon + `ngrok` + GPT Actions — основной рабочий операторский путь
-- `docker-compose.yml` is optional and uses repo-local mounts instead of machine-specific Linux paths / `docker-compose.yml` опционален и использует repo-local mounts вместо machine-specific Linux paths
-- the main folder remains the stable macOS-first branch / основная папка проекта остаётся стабильной macOS-first веткой
-- current codebase is reviewed and locally verified; one real Windows-host validation pass is still recommended / текущая кодовая база отревьюена и локально проверена, но один реальный Windows-host validation pass всё ещё рекомендуется
+[Русская версия](docs/README_RU.md)
 
 ---
 
-## RU
+## Demo
 
-### Что это такое
+See the Windows version in action before you read the setup:
 
-Second Lane — это второй рабочий контур для случая, когда основной AI coding-agent уже остановился, а задачу всё ещё нужно довести до результата.
+![Second Lane Windows demo](assets/demo/secondary-lane-demo.gif)
 
-Second Lane нужен для одной очень конкретной боли:
+## Screenshots
 
-- coding-agent упёрся в лимиты;
-- задача ещё не закончена;
-- проект всё ещё надо двигать дальше;
-- терять контекст и начинать с нуля не хочется.
+Main working view with ChatGPT and the local control panel:
 
-Second Lane даёт второй рабочий контур:
+![Second Lane main interface](assets/screenshots/main-interface.png)
 
-- открываешь ChatGPT;
-- подключаешь свой Custom GPT через GPT Actions;
-- и продолжаешь реальную работу над проектом на своей машине.
+Closer look at the chat-driven workflow:
 
-Это не просто “чат с подсказками”.  
-Это способ превратить ChatGPT в рабочий контур, который реально умеет:
+![Second Lane chat view](assets/screenshots/chat-view.png)
 
-- inspect проекта;
-- чтение и правка файлов;
-- запуск команд;
-- запуск сервисов;
-- smoke-check и проверка результата;
-- память проекта между сессиями.
+## Why People Use It
 
-### Что значит “дать ChatGPT руки”
+Second Lane is for people who already like ChatGPT, but want it to do real work on a real project.
 
-Это значит, что ChatGPT через GPT Actions может не только отвечать текстом, но и реально двигать проект вперёд:
+- **No extra API-key workflow.** If you already pay for ChatGPT Plus, you can use Custom GPTs + Actions instead of setting up separate model billing.
+- **Local by design.** Second Lane runs on your machine and only works inside folders you explicitly allow.
+- **Works from the ChatGPT app too.** With `ngrok`, your GPT can reach your machine from your phone, laptop, or anywhere else.
+- **Works across languages and stacks.** Python, Node, Go, Rust, Java, scripts, monorepos — if your machine can run the right command, ChatGPT can operate it.
+- **ChatGPT instead of a CLI.** You work through the normal ChatGPT interface, not a terminal-first tool.
 
-- читать проект;
-- искать нужный код;
-- вносить правки;
-- запускать тесты и команды;
-- поднимать сервисы;
-- проверять результат;
-- сохранять состояние проекта между сессиями.
+## Built on Official ChatGPT Features
 
-### Почему это вообще важно
+Second Lane works through the normal ChatGPT workflow: Custom GPTs, Actions, instructions, and knowledge files.
 
-Claude Code, Codex и другие AI coding tools сильны, пока:
+- **No hidden API tricks.** You connect a GPT to your local server through standard Actions.
+- **No stolen keys or gray schemes.** You use your own ChatGPT account and the product features that already exist.
+- **No unofficial access layer.** Second Lane does not replace ChatGPT. It extends it with a local execution runtime on your machine.
 
-- не закончился лимит;
-- не развалился контекст;
-- не стало неудобно продолжать задачу в том же интерфейсе.
+## What It Is
 
-Но реальная боль начинается в момент, когда:
+Second Lane is a local server that connects ChatGPT to your project through GPT Actions.
 
-- лимит закончился;
-- сессия умерла;
-- контекст стал неудобным;
-- а проект всё ещё надо дожать.
+It lets ChatGPT:
 
-Second Lane нужен именно для этого сценария:
-
-- основной агент остановился;
-- задача всё ещё живая;
-- ты переходишь в ChatGPT;
-- и продолжаешь работу над тем же проектом на своей машине.
-
-То есть это не “ещё один IDE-агент”.  
-Это **второй рабочий контур**, когда первый перестал быть доступным, удобным или просто закончился.
-
-### Быстрое сравнение
-
-| Ситуация | Claude Code / Codex | Second Lane |
-| --- | --- | --- |
-| Пока лимиты и сессия в порядке | Отлично | Не обязан быть первым выбором |
-| Агент упёрся в лимит | Работа стопорится | Можно продолжить в ChatGPT |
-| Нужно быстро подхватить задачу в другом интерфейсе | Не всегда удобно | Это основной сценарий |
-| Нужны реальные действия на своей машине через ChatGPT | Обычно не про это | Это и есть суть |
-| Нужна память проекта между сессиями | Часто частично или через чат | Встроено через `.ai_context/` |
-
-### Пример живого сценария
-
-Например, ты делал багфикс в Claude Code:
-
-1. Агент уже нашёл подозрительное место в коде.
-2. Потом упёрся в лимит до завершения.
-3. Ты открываешь ChatGPT.
-4. GPT через Second Lane делает `inspectProject`, читает нужные файлы, вносит правку, запускает тест или команду и проверяет результат.
-5. Работа не умирает вместе с лимитом.
-
-### Use cases
-
-- добить багфикс после лимита Claude Code;
-- продолжить задачу в ChatGPT с того места, где остановился Codex;
-- быстро прогнать inspect, patch, test и smoke-check в одном контуре;
-- оставить структурированный handoff, чтобы не потерять контекст между сессиями;
-- использовать ChatGPT как реальный execution layer, а не только как чат.
-
-### Для кого это
-
-- для разработчиков, которые уже пользуются Claude Code, Codex или похожими агентами;
-- для тех, кто не хочет терять темп после лимитов;
-- для тех, кто хочет продолжать работу в ChatGPT, но с реальными действиями над проектом;
-- для тех, кому важна память проекта между сессиями.
-
-### Для кого это не надо
-
-- если тебе нужен hosted SaaS без локального запуска;
-- если ты ищешь полную замену IDE;
-- если тебе не нужен ChatGPT / GPT Actions как рабочий интерфейс;
-- если ты не хочешь вообще ничего поднимать на своей машине.
-
-### Простой flow
+- **Read and search** your project files
+- **Patch code** with automatic rollback on verification failure
+- **Run tests** with auto-detection (`pytest`, `npm test`, `make test`)
+- **Start services** and run smoke checks
+- **Execute commands** in your workspace
+- **Keep project memory** across sessions via `.ai_context/`
 
 ```text
-Claude Code / Codex stopped
-        ->
-Move task into ChatGPT
-        ->
-GPT Actions call Second Lane
-        ->
-Inspect / patch / test / run / verify / continue
+Your machine                          ChatGPT
+┌─────────────────┐    ngrok     ┌──────────────┐
+│  Second Lane    │◄────────────►│  GPT Actions │
+│  localhost:8787 │   tunnel     │  Custom GPT  │
+└─────────────────┘              └──────────────┘
 ```
 
-### Что умеет проект сейчас
+## Why It Feels Different
 
-Подтверждённый рабочий контур:
+Most tools in this space are terminal-first and API-key-first. Second Lane is built around a different idea:
 
-- daemon поднимается локально на `127.0.0.1:8787`;
-- `ngrok` публикует текущий daemon наружу;
-- `openapi.gpts.yaml` импортируется в GPT Actions;
-- GPT может вызывать curated actions для работы с проектом;
-- проект хранит `.ai_context/` как долговечную память между сессиями.
+- **Use ChatGPT as the interface**
+- **Run everything locally**
+- **Keep the project close to the machine**
+- **Make remote control simple enough to use from a phone**
 
-### GPT schema
+That makes it useful not only as a backup when another agent hits a limit, but as a primary workflow for many people.
 
-В проекте рабочей схемой для GPT Actions считается одна схема:
+## Common Use Cases
 
-- `openapi.gpts.yaml` — curated compact schema для GPT Actions.
+- **Turn ChatGPT into your main coding agent** for local projects
+- **Continue after another agent hits limits** or loses context
+- **Work on a project from your phone** through the ChatGPT app
+- **Keep code local** for privacy, client work, or internal tools
+- **Use ChatGPT on stacks that are not tied to one editor**
+- **Help students learn on real projects** with an interface they already know
+- **Give a team one familiar UI** instead of teaching everyone a CLI-heavy workflow
 
-Именно её нужно импортировать в GPT Actions и держать синхронизированной с актуальным GPT-facing action-set.
+## Second Lane vs Alternatives
 
-### Сильные workflow actions в GPT schema
+| Feature | Open Interpreter / Aider style tools | Second Lane |
+| --- | --- | --- |
+| Main interface | CLI | ChatGPT UI |
+| Typical setup | Separate API keys and model billing | ChatGPT Plus + local server |
+| Runs on your machine | Yes | Yes |
+| Mobile access through ChatGPT app | Usually no | Yes |
+| Project memory between sessions | Partial / tool-specific | Built-in `.ai_context/` |
+| Works across languages and stacks | Yes | Yes |
+| Best fit | Terminal-native developers | People who want ChatGPT to operate projects directly |
 
-Текущий compact action-set специально включает более сильные операции:
-
-- `safePatchAndVerifyProjectFile`
-- `applyPatch`
-- `multiFilePatchAndVerify`
-- `runTest`
-- `analyzeProjectBuildFailure`
-- `runProjectServiceAndSmokeCheck`
-
-И сознательно **не включает** в GPT schema слабые или лишние слоты вроде browser-open и размытых GUI-actions.
-
-### Что реально делает GPT через этот runtime
-
-- смотрит структуру проекта;
-- ищет нужные файлы и фрагменты;
-- читает код;
-- правит файлы точечно или координированно через несколько файлов;
-- запускает команды и тесты;
-- поднимает сервис и проверяет, что он действительно стартовал;
-- анализирует ошибки сборки и запуска;
-- оставляет handoff для следующей сессии.
-
-### Быстрый запуск
-
-Для Windows это главный рекомендуемый путь первого запуска.
-
-Если нужен самый короткий путь без блужданий, открой:
-
-- `docs/WINDOWS_FIRST_START.md`
+## Quick Start (Windows)
 
 ```powershell
 Copy-Item .env.example .env
-# заполни AGENT_TOKEN
-# заполни NGROK_DOMAIN
+# Set AGENT_TOKEN (long random secret)
+# Set NGROK_DOMAIN (free domain from dashboard.ngrok.com)
 py -3.13 gpts_agent_control.py
 ```
 
-или двойным кликом по `Запустить GPTS Agent.bat`.
+Or double-click `Запустить GPTS Agent.bat`.
 
-Если хочешь поднять окружение руками, используй именно этот путь:
+Step-by-step guide for beginners: [docs/WINDOWS_FIRST_START.md](docs/WINDOWS_FIRST_START.md)
+
+### Manual environment setup
 
 ```powershell
 py -3.13 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
-### Локальная проверка
+## Connect Your GPT
 
-Для локальной проверки в проекте теперь есть три repo-local пути:
+1. Import `openapi.gpts.yaml` into GPT Actions
+2. Set bearer token from `.env`
+3. Paste `gpts/system_instructions.txt` into GPT instructions
+4. Upload `gpts/knowledge/` into GPT knowledge
+5. Test: `getCapabilities` → `inspectProject` → `runTest`
 
-Полный verify-цикл:
+## What GPT Can Actually Do
 
-```bash
-bash scripts/verify_local.sh
-```
+| Action | What it does |
+| --- | --- |
+| `inspectProject` | Scan project structure, detect type, find key files |
+| `readFile` / `writeFile` | Read and write files in your workspace |
+| `searchWorkspace` | Full-text search across project files |
+| `applyPatch` | Multi-step safe patching with checkpoint |
+| `safePatchAndVerifyProjectFile` | Patch → verify → auto-rollback on failure |
+| `multiFilePatchAndVerify` | Coordinated patches across multiple files |
+| `runTest` | Auto-detect and run tests (`pytest`, `npm`, `make`) |
+| `runProjectServiceAndSmokeCheck` | Start service, wait for ready, smoke check, stop |
+| `analyzeProjectBuildFailure` | Run build command and classify failure type |
+| `runCommand` / `startCommand` | Execute any command in workspace |
+| `gitStatus` / `gitDiff` | Git operations |
+| `finalizeProjectWork` | Save session, handoff, and project state |
 
-Windows PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\verify_local.ps1
-```
-
-Эта команда:
-
-- использует `.venv` как основной repo-local путь окружения;
-- ставит зависимости из `requirements.txt`, если окружение ещё не подготовлено или файл зависимостей изменился;
-- прогоняет `py_compile` по load-bearing Python-файлам;
-- затем запускает `pytest` через локальное окружение проекта.
-
-Только тесты:
-
-```bash
-bash scripts/run_local_pytest.sh
-```
-
-Windows PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_local_pytest.ps1
-```
-
-Bounded runtime smoke-check:
-
-```bash
-bash scripts/smoke_local.sh
-```
-
-Windows PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\smoke_local.ps1
-```
-
-Эта команда:
-
-- использует тот же repo-local `.venv`;
-- поднимает локальный uvicorn на временном свободном порту;
-- запускает его с временными smoke-env значениями, без зависимости от рабочего `.env`;
-- проверяет `/health` и `/v1/capabilities` с bearer token;
-- сама останавливает процесс после проверки.
-
-Можно передать свои target-файлы в verify/test-скрипты:
-
-```bash
-bash scripts/verify_local.sh tests/test_super_actions.py
-bash scripts/run_local_pytest.sh tests/test_super_actions.py
-```
-
-### Как подключить GPT
-
-1. Импортируй `openapi.gpts.yaml` в GPT Actions.
-2. Укажи bearer token из `.env`.
-3. Вставь `gpts/system_instructions.txt` в instructions GPT.
-4. Загрузи `gpts/knowledge/` в knowledge GPT.
-5. Проверь первые вызовы `getCapabilities`, `inspectProject`, `runTest`.
-
-### Что лежит в проекте
-
-- `app/main.py` — API и маршруты actions
-- `app/core/` — конфиг, безопасность, utils, project memory, providers
-- `gpts/` — системная инструкция и knowledge-pack
-- `gpts_agent_control.py` — панель запуска daemon и tunnel
-- `openapi.gpts.yaml` — curated compact schema для GPT Actions
-- `.ai_context/` — память проекта
-- `.env` / `.env.example` — runtime config
-- `requirements.txt` — зависимости Python
-- `data/agent.db` — runtime state
-- `tests/` — smoke и regression tests для ключевых actions
-
-### Технические ограничения
-
-- рабочий локальный путь сейчас ориентирован на Python `3.13`;
-- локальная установка на Python `3.14` не считается поддержанной для этого набора зависимостей;
-- практическая причина простая: текущий `pydantic-core` для этого проекта ставится и тестируется на `3.13`, а на `3.14` ломает setup;
-- основной repo-local путь окружения теперь `.venv`, но старую `.venv313` verify/test-скрипты ещё понимают автоматически;
-- все маршруты защищены bearer auth;
-- доступ к файлам ограничен `WORKSPACE_ROOTS`.
-
----
-
-## EN
-
-### What It Is
-
-Second Lane is a second execution lane for the moment when your main AI coding agent has already stopped, but the task still has to reach a result.
-
-Second Lane exists for one specific pain:
-
-- your coding agent hit a usage limit;
-- the task is not done;
-- the project still has to move forward;
-- and you don’t want to lose context or restart from scratch.
-
-Second Lane gives you a second execution lane:
-
-- open ChatGPT;
-- connect your Custom GPT through GPT Actions;
-- keep working on the real project on your machine.
-
-This is not just “chat with suggestions.”  
-It gives ChatGPT real execution:
-
-- project inspection;
-- file reading and editing;
-- command execution;
-- service startup;
-- smoke checks and result verification;
-- durable project memory across sessions.
-
-### What It Means To Give ChatGPT Hands
-
-It means ChatGPT can do more than generate text through GPT Actions:
-
-- inspect the project;
-- search relevant code;
-- make changes;
-- run tests and commands;
-- start services;
-- verify results;
-- preserve project state across sessions.
-
-### Why Not Just Use Claude Code or Codex
-
-Claude Code, Codex, and other AI coding tools are strong while:
-
-- limits are still available;
-- context has not fallen apart;
-- and the task is still convenient to continue in the same interface.
-
-Second Lane exists for a different scenario:
-
-- the primary agent stopped;
-- the task is still alive;
-- you move into ChatGPT;
-- and keep working on the same project on your own machine.
-
-So this is not “another IDE agent.”  
-It is a **second execution lane** when the first one stops being available or convenient.
-
-### Quick Comparison
-
-| Situation | Claude Code / Codex | Second Lane |
-| --- | --- | --- |
-| Limits and session are healthy | Excellent | Not necessarily the first choice |
-| The agent hits a cap | Work stalls | You can continue in ChatGPT |
-| You need to pick up the task from another interface fast | Not always convenient | This is the primary use case |
-| You want real actions on your machine through ChatGPT | Usually not the point | That is the whole point |
-| You need project memory across sessions | Often partial or chat-bound | Built in through `.ai_context/` |
-
-### Real-World Scenario
-
-Imagine you were fixing a bug in Claude Code:
-
-1. The agent already found the likely problem area.
-2. Then it hit a limit before the task was complete.
-3. You open ChatGPT.
-4. GPT uses Second Lane to call `inspectProject`, read files, apply a change, run a test or command, and verify the result.
-5. The work does not die with the limit.
-
-### Use Cases
-
-- finish a bugfix after Claude Code hits its limit;
-- continue a task in ChatGPT from the point where Codex stopped;
-- run inspect, patch, test, and smoke-check in one lane;
-- leave structured handoff so context survives across sessions;
-- use ChatGPT as a real execution layer, not just a chat box.
-
-### Who This Is For
-
-- developers already using Claude Code, Codex, or similar agents;
-- people who do not want to lose momentum after usage limits;
-- people who want to keep building in ChatGPT with real project actions;
-- people who care about project memory across sessions.
-
-### Who This Is Not For
-
-- people looking for a hosted SaaS with no local setup;
-- people looking for a full IDE replacement;
-- people who do not want ChatGPT / GPT Actions as a working interface;
-- people who do not want anything running on their own machine.
-
-### Simple Flow
+## Project Structure
 
 ```text
-Claude Code / Codex stopped
-        ->
-Move task into ChatGPT
-        ->
-GPT Actions call Second Lane
-        ->
-Inspect / patch / test / run / verify / continue
+app/main.py              # FastAPI server — all API routes
+app/core/                # Config, security, utils, project memory
+gpts/                    # GPT system instructions + knowledge pack
+gpts_agent_control.py    # Control panel (daemon + ngrok tunnel)
+openapi.gpts.yaml        # Curated OpenAPI schema for GPT Actions
+tests/                   # Regression and smoke tests
+.env.example             # Configuration template
 ```
 
-### GPT schema
+## Security
 
-This project uses one working schema for GPT Actions:
+- All routes require bearer token authentication
+- File access is restricted to `WORKSPACE_ROOTS`
+- SSH is restricted to allowlisted hosts/CIDRs with `known_hosts` + `RejectPolicy`
+- Weak tokens are rejected at startup (minimum 24 characters)
+- Key actions are logged to an SQLite audit trail
 
-- `openapi.gpts.yaml` — the curated compact schema for GPT Actions.
-
-This is the schema that should be imported into GPT Actions and kept aligned with the current GPT-facing action set.
-
-### Strong workflow actions exposed to GPT
-
-The current compact GPT schema deliberately exposes stronger workflow operations such as:
-
-- `safePatchAndVerifyProjectFile`
-- `applyPatch`
-- `multiFilePatchAndVerify`
-- `runTest`
-- `analyzeProjectBuildFailure`
-- `runProjectServiceAndSmokeCheck`
-
-And it deliberately avoids weaker browser/GUI convenience actions in the GPT-facing schema.
-
-### What Works Today
-
-Confirmed working path:
-
-- the daemon runs locally on `127.0.0.1:8787`;
-- `ngrok` exposes the current daemon over the internet;
-- `openapi.gpts.yaml` can be imported into GPT Actions;
-- GPT can call curated actions against the project;
-- `.ai_context/` stores durable project memory across sessions.
-
-### What GPT Can Actually Do Through It
-
-- inspect a project;
-- find relevant files and code fragments;
-- read code;
-- patch one file or coordinate changes across multiple files;
-- run commands and tests;
-- start a service and verify it really started;
-- analyze build and runtime failures;
-- leave structured handoff for the next session.
-
-### Quick Start
-
-For Windows users, this is the main recommended first-start path.
-
-If you want the shortest no-guesswork onboarding path, open:
-
-- `docs/WINDOWS_FIRST_START.md`
-
-For Windows users, this native path is the main supported flow. The Docker path is optional and is not required for first setup.
+## Local Verification
 
 ```powershell
-Copy-Item .env.example .env
-# fill AGENT_TOKEN
-# fill NGROK_DOMAIN
-py -3.13 gpts_agent_control.py
-```
-
-Or double-click `Запустить GPTS Agent.bat` on Windows.
-
-If you want to prepare the local environment manually, use this exact path:
-
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-```
-
-### Local Verification
-
-The repository now includes three repo-local verification paths:
-
-Full verify loop:
-
-```bash
-bash scripts/verify_local.sh
-```
-
-Windows PowerShell:
-
-```powershell
+# Full verify (compile + tests)
 powershell -ExecutionPolicy Bypass -File scripts\verify_local.ps1
-```
 
-This command:
-
-- uses `.venv` as the main repo-local environment path;
-- installs dependencies from `requirements.txt` when the environment is missing or stale;
-- runs `py_compile` across the load-bearing Python files;
-- then runs `pytest` through the project-local virtual environment.
-
-`Python 3.14` is not considered a supported local setup path for this dependency set at the moment.
-
-Tests only:
-
-```bash
-bash scripts/run_local_pytest.sh
-```
-
-Windows PowerShell:
-
-```powershell
+# Tests only
 powershell -ExecutionPolicy Bypass -File scripts\run_local_pytest.ps1
-```
 
-Bounded runtime smoke-check:
-
-```bash
-bash scripts/smoke_local.sh
-```
-
-Windows PowerShell:
-
-```powershell
+# Runtime smoke check (starts server, checks health, stops)
 powershell -ExecutionPolicy Bypass -File scripts\smoke_local.ps1
 ```
 
-This command:
+## Requirements
 
-- uses the same repo-local `.venv`;
-- starts local uvicorn on a temporary free port;
-- runs it with temporary smoke-check env values instead of depending on the working `.env`;
-- verifies `/health` and `/v1/capabilities` with bearer auth;
-- stops the process automatically after the check.
+- Python 3.13
+- ngrok (free tier works)
+- ChatGPT Plus or another ChatGPT plan with GPTs + Actions support
 
-You can also pass explicit targets to the verify/test scripts:
+## License
 
-```bash
-bash scripts/verify_local.sh tests/test_super_actions.py
-bash scripts/run_local_pytest.sh tests/test_super_actions.py
-```
-
-### Connect Your GPT
-
-1. Import `openapi.gpts.yaml` into GPT Actions.
-2. Set the bearer token from `.env`.
-3. Paste `gpts/system_instructions.txt` into your GPT instructions.
-4. Upload `gpts/knowledge/` into GPT knowledge.
-5. Verify the first `getCapabilities`, `inspectProject`, and `runTest` calls.
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

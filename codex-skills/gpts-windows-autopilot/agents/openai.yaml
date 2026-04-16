@@ -1,0 +1,4 @@
+interface:
+  display_name: "GPTS Windows Autopilot"
+  short_description: "Авторазвёртывание GPTS на Windows"
+  default_prompt: "Use $gpts-windows-autopilot to do as much of the Windows GPTS setup as possible by yourself: verify Python 3.13 and ngrok, pause only for real human-only login or registration steps, fill .env, launch the panel, verify the tunnel, then help finish the GPT with Actions and a working test call."

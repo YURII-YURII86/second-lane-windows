@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# Second Lane
+# Copyright (c) 2026 Yurii Slepnev
+# Licensed under the Apache License, Version 2.0.
+# Official: https://t.me/yurii_yurii86 | https://youtube.com/@yurii_yurii86 | https://instagram.com/yurii_yurii86
+
 from __future__ import annotations
 
 import ipaddress
@@ -37,9 +43,35 @@ from app.core.utils import ensure_parent, list_dir, now_ts, resolve_allowed_path
 
 settings = load_settings()
 validate_runtime_settings(settings)
-app = FastAPI(title="Universal Flex Agent", version="3.1.0")
+app = FastAPI(
+    title="Second Lane API",
+    version="3.1.0",
+    description=(
+        "Second Lane — local GPT Actions runtime by Yurii Slepnev. "
+        "Telegram: https://t.me/yurii_yurii86 | "
+        "YouTube: https://youtube.com/@yurii_yurii86 | "
+        "Instagram: https://instagram.com/yurii_yurii86 | "
+        "License: Apache-2.0"
+    ),
+)
 PROCESS_REGISTRY: dict[int, dict[str, Any]] = {}
 IS_WINDOWS = os.name == "nt"
+
+
+_initialized_dbs: set[str] = set()
+
+
+def _ensure_db(db_path: Path) -> None:
+    key = str(db_path)
+    if key in _initialized_dbs:
+        return
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS events (id integer primary key autoincrement, ts integer not null, kind text not null, payload text not null)"
+        )
+        conn.commit()
+    _initialized_dbs.add(key)
 
 
 def _append_process_log(entry: dict[str, Any], text: str) -> None:
@@ -87,11 +119,8 @@ def auth_dependency(authorization: str | None = Header(default=None)) -> None:
 
 
 def db_log(kind: str, payload: dict[str, Any]) -> None:
-    settings.state_db_path.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_db(settings.state_db_path)
     with sqlite3.connect(settings.state_db_path) as conn:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS events (id integer primary key autoincrement, ts integer not null, kind text not null, payload text not null)"
-        )
         conn.execute(
             "INSERT INTO events(ts, kind, payload) VALUES (?, ?, ?)",
             (now_ts(), kind, json.dumps(payload, ensure_ascii=False)),
@@ -662,7 +691,7 @@ def _open_app_with_system(app_name: str, args: list[str]) -> None:
 
 @app.get("/health", operation_id="health")
 def health(_auth: None = Depends(auth_dependency)) -> dict[str, Any]:
-    return {"ok": True, "service": "universal-flex-agent", "time": now_ts()}
+    return {"ok": True, "service": "second-lane", "time": now_ts()}
 
 
 @app.get("/v1/capabilities", operation_id="getCapabilities")
@@ -1027,6 +1056,7 @@ def list_directory(req: ListDirReq, _auth: None = Depends(auth_dependency)) -> d
 @app.post("/v1/exec/run", operation_id="runCommand")
 def run_command(req: ExecReq, _auth: None = Depends(auth_dependency)) -> dict[str, Any]:
     cwd = resolve_allowed_path(settings, req.cwd)
+    db_log("run_command", {"argv": req.argv, "cwd": str(cwd)})
     return run_subprocess(req.argv, cwd, req.timeout_sec, settings.max_output_chars)
 
 
@@ -1046,6 +1076,9 @@ def start_command(req: ExecReq, _auth: None = Depends(auth_dependency)) -> dict[
             "output": message,
             "command_not_found": True,
         }
+    finished = [pid for pid, item in PROCESS_REGISTRY.items() if item["proc"].poll() is not None and item.get("stdout_closed")]
+    for pid in finished:
+        del PROCESS_REGISTRY[pid]
     PROCESS_REGISTRY[proc.pid] = {
         "proc": proc,
         "cwd": str(cwd),
@@ -1056,6 +1089,7 @@ def start_command(req: ExecReq, _auth: None = Depends(auth_dependency)) -> dict[
         "stdout_closed": False,
     }
     threading.Thread(target=_drain_process_output, args=(proc.pid,), daemon=True).start()
+    db_log("start_command", {"argv": req.argv, "cwd": str(cwd), "process_id": proc.pid})
     return {"ok": True, "process_id": proc.pid}
 
 

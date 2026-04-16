@@ -1,5 +1,8 @@
 # PROJECT MEMORY SPEC
 
+Second Lane by **Yurii Slepnev** · Apache-2.0  
+Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
+
 ## Что хранится
 
 - `system_state.json` — подтверждённая текущая правда о проекте

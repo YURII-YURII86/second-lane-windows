@@ -1,5 +1,9 @@
 # Contributing
 
+Second Lane is created by **Yurii Slepnev**.
+Official links: Telegram https://t.me/yurii_yurii86 · YouTube https://youtube.com/@yurii_yurii86 · Instagram https://instagram.com/yurii_yurii86
+License: Apache-2.0
+
 ## RU
 
 Спасибо, что рассматриваешь вклад в Second Lane.

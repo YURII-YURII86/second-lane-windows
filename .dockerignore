@@ -1,0 +1,14 @@
+.git
+.venv
+.venv*
+.env
+.env.local
+__pycache__
+.pytest_cache
+.DS_Store
+*.pyc
+*.pyo
+*.pyd
+data/*.db
+.ai_context/
+.tmp_*

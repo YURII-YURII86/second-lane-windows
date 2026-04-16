@@ -1,5 +1,8 @@
 # DEPLOY
 
+Second Lane by **Yurii Slepnev** · Apache-2.0  
+Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
+
 ## Windows-first local mode
 
 В этой папке основной и рекомендуемый путь — нативный Windows-запуск.
@@ -49,6 +52,7 @@ py -3.13 gpts_agent_control.py
 - `./workspace:/workspace`
 
 Это сделано, чтобы compose-файл не зависел от старых Linux host paths и был переносимее между машинами.
+Пустая папка `workspace/` лежит в репозитории специально именно для этого mount-а; внутри может быть только `.gitkeep`, и это нормально.
 
 Важно: для первого запуска Windows-пользователя Docker не нужен. Основной и лучше проверенный путь — нативный Python/PowerShell flow.
 
@@ -56,7 +60,7 @@ py -3.13 gpts_agent_control.py
 
 В проекте остаются шаблоны для `systemd` и `nginx`:
 
-- `deploy/systemd/universal-flex-agent.service`
+- `deploy/systemd/second-lane.service`
 - `deploy/nginx/default.conf`
 
 Их нужно адаптировать под фактический путь установки на сервере.

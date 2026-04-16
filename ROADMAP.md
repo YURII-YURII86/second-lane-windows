@@ -1,5 +1,8 @@
 # Roadmap
 
+Second Lane by **Yurii Slepnev** · Apache-2.0  
+Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
+
 ## RU
 
 ### Текущий фокус
@@ -10,7 +13,7 @@
 - работе с локальными проектами через контролируемый daemon
 - сильных сценариях разработки: inspect, patch, test, run, verify
 - памяти проекта через `.ai_context/`
-- операторском сценарии с приоритетом на macOS
+- нативном Windows-сценарии как основном операторском пути (Python 3.13 + PowerShell + ngrok)
 
 ### Ближайшие приоритеты
 
@@ -40,19 +43,13 @@
 
 ### Более дальние приоритеты
 
-#### 1. Поддержка Windows
+#### 1. Поддержка macOS и Linux
 
-- bootstrap-сценарий
-- launcher для оператора
-- интеграции с system/open действиями
-
-#### 2. Поддержка Linux
-
-- сценарий daemon и tunnel
-- операторский сценарий
+- адаптация launcher для macOS и Linux
+- daemon и tunnel flow для других ОС
 - финальная шлифовка setup
 
-#### 3. Более сильные демо и публичные примеры
+#### 2. Более сильные демо и публичные примеры
 
 - больше записанных сценариев
 - публичные walkthrough в формате “от лимита до готового результата”
@@ -73,7 +70,7 @@ Second Lane currently focuses on:
 - local machine project work through a controlled daemon
 - stronger coding workflows such as inspect, patch, test, run, verify
 - durable project memory through `.ai_context/`
-- macOS-first operator flow
+- native Windows operator flow as the primary supported path (Python 3.13 + PowerShell + ngrok)
 
 ### Near-Term Priorities
 
@@ -103,19 +100,13 @@ Second Lane currently focuses on:
 
 ### Later Priorities
 
-#### 1. Windows support
+#### 1. macOS and Linux support
 
-- bootstrap path
-- operator launcher
-- system/open integrations
-
-#### 2. Linux support
-
-- daemon and tunnel flow
-- operator story
+- adapt the launcher for macOS and Linux
+- daemon and tunnel flow for other operating systems
 - setup polish
 
-#### 3. Better demos and public examples
+#### 2. Better demos and public examples
 
 - more recorded scenarios
 - public “from limit to finish” walkthroughs

@@ -1,7 +1,7 @@
 services:
-  universal-flex-agent:
+  second-lane:
     build: .
-    container_name: universal-flex-agent
+    container_name: second-lane
     env_file:
       - .env
     environment:

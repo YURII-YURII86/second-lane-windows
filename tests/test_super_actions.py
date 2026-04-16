@@ -1,14 +1,20 @@
+# Second Lane
+# Copyright (c) 2026 Yurii Slepnev
+# Licensed under the Apache License, Version 2.0.
+# Official: https://t.me/yurii_yurii86 | https://youtube.com/@yurii_yurii86 | https://instagram.com/yurii_yurii86
 from __future__ import annotations
 
 import json
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import yaml
 import app.main as main
 from app.core import utils as core_utils
+import gpts_agent_control as control_panel
 
 
 AUTH = {"Authorization": "Bearer " + main.settings.agent_token}
@@ -402,6 +408,44 @@ def test_run_service_and_smoke_check_detects_startup_text(monkeypatch, tmp_path:
     assert payload["started"] is True
     assert payload["smoke"]["ok"] is True
     assert "SERVER READY" in "\n".join(payload["service_output"])
+
+
+def test_windows_default_workspace_roots_include_project_dir() -> None:
+    roots = control_panel.DEFAULT_WORKSPACE_ROOTS.split(control_panel.os.pathsep)
+    assert str(control_panel.PROJECT_DIR) in roots
+
+
+def test_start_all_worker_refuses_unknown_windows_service_on_8787() -> None:
+    log_messages: list[str] = []
+    status_updates: list[str] = []
+    tunnel_attempted = {"value": False}
+    panel = SimpleNamespace(
+        agent_proc=None,
+        _using_external_daemon=False,
+        write_log=lambda text: log_messages.append(text),
+        agent_token_is_safe=lambda: True,
+        explain_unsafe_token=lambda: None,
+        _local_daemon_ready=lambda: True,
+        _current_project_owns_port_8787=lambda: False,
+        _stop_foreign_daemon_on_8787=lambda: False,
+        ensure_uvicorn=lambda: True,
+        load_env=lambda: {},
+        _start_tunnel=lambda: tunnel_attempted.__setitem__("value", True),
+        agent_status=SimpleNamespace(set=lambda text: status_updates.append(text)),
+        _tunnel_restart_count=0,
+        _last_tunnel_failure=None,
+    )
+
+    original_is_windows = control_panel.IS_WINDOWS
+    control_panel.IS_WINDOWS = True
+    try:
+        control_panel.ControlPanel._start_all_worker(panel)
+    finally:
+        control_panel.IS_WINDOWS = original_is_windows
+
+    assert tunnel_attempted["value"] is False
+    assert any("не запускаю туннель" in message for message in log_messages)
+    assert status_updates[-1] == "Демон: порт 8787 занят неподтверждённым процессом"
 
 
 def test_start_command_returns_controlled_error_for_missing_binary(monkeypatch, tmp_path: Path) -> None:
