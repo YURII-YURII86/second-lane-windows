@@ -121,7 +121,7 @@ That makes it useful not only as a backup when another agent hits a limit, but a
 
 ## Quick Start (Windows)
 
-### Fastest Setup Through Codex
+### Fastest Setup Through Codex (or Claude Code)
 
 Pass this file to Codex or Claude Code:
 
