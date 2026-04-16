@@ -1,9 +1,9 @@
-# Codex Skills For Second Lane
+# Codex Skills For Secondary LANE
 
-Second Lane by **Yurii Slepnev** · Apache-2.0  
+Secondary LANE by **Yurii Slepnev** · Apache-2.0  
 Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
 
-Здесь лежат готовые skills для Codex, которые помогают ставить и сопровождать Windows-версию Second Lane.
+Здесь лежат готовые skills для Codex, которые помогают ставить и сопровождать Windows-версию Secondary LANE.
 
 ## Что это за папка
 
@@ -24,12 +24,12 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 Самый безопасный постоянный путь:
 
 1. скопируй папку `gpts-windows-autopilot` в каталог skills твоего Codex;
-2. потом скажи Codex использовать этот skill для установки Second Lane.
+2. потом скажи Codex использовать этот skill для установки Secondary LANE.
 
 Пример фразы для Codex:
 
 ```text
-Установи мне Second Lane на Windows по skill-у gpts-windows-autopilot. Делай всё сам, останавливайся только там, где нужен мой логин, регистрация, капча, подтверждение почты, оплата или системное разрешение.
+Установи мне Secondary LANE на Windows по skill-у gpts-windows-autopilot. Делай всё сам, останавливайся только там, где нужен мой логин, регистрация, капча, подтверждение почты, оплата или системное разрешение.
 ```
 
 Если Codex спросит, куда ставить проект, самый простой путь:

@@ -1,13 +1,13 @@
 # Roadmap
 
-Second Lane by **Yurii Slepnev** · Apache-2.0  
+Secondary LANE by **Yurii Slepnev** · Apache-2.0  
 Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yurii86 · Instagram: https://instagram.com/yurii_yurii86
 
 ## RU
 
 ### Текущий фокус
 
-Сейчас Second Lane сосредоточен на:
+Сейчас Secondary LANE сосредоточен на:
 
 - работе через ChatGPT + Custom GPT + GPT Actions как главный интерфейс выполнения
 - работе с локальными проектами через контролируемый daemon
@@ -64,7 +64,7 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 
 ### Current Scope
 
-Second Lane currently focuses on:
+Secondary LANE currently focuses on:
 
 - ChatGPT + Custom GPT + GPT Actions as the main execution interface
 - local machine project work through a controlled daemon
