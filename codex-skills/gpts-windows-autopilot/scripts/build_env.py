@@ -39,7 +39,8 @@ def main():
     branch_root = find_branch_root(Path(args.project_root).expanduser().resolve())
     env_example_path = branch_root / ".env.example"
     env_path = branch_root / ".env"
-    base_text = env_path.read_text(encoding="utf-8") if env_path.exists() else env_example_path.read_text(encoding="utf-8")
+    # utf-8-sig strips BOM if present so we never double-write it on re-run
+    base_text = env_path.read_text(encoding="utf-8-sig") if env_path.exists() else env_example_path.read_text(encoding="utf-8-sig")
     lines = parse_env_lines(base_text)
 
     if args.workspace_root:
@@ -68,7 +69,8 @@ def main():
     lines = set_key(lines, "ENABLED_PROVIDER_MANIFESTS", f"{project_path_windows}\\app\\providers")
     lines = set_key(lines, "STATE_DB_PATH", f"{project_path_windows}\\data\\agent.db")
 
-    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Write with UTF-8 BOM so Notepad on any Windows locale shows Cyrillic correctly
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
 
     print(json.dumps({
         "env_path": str(env_path),

@@ -363,7 +363,8 @@ class ControlPanel:
     def load_env(self) -> dict[str, str]:
         env = os.environ.copy()
         if ENV_FILE.exists():
-            for line in ENV_FILE.read_text("utf-8").splitlines():
+            # utf-8-sig strips BOM so the first key is never corrupted on Windows
+            for line in ENV_FILE.read_text("utf-8-sig").splitlines():
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
