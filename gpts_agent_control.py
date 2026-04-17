@@ -30,7 +30,10 @@ import datetime
 import platform as _platform
 import tkinter as tk
 from tkinter import BOTH, END, LEFT, Button, Frame, Label, StringVar, Text, Tk
-import yaml
+try:
+    import yaml as _yaml  # pyyaml — installed into .venv; may be absent on first launch
+except ImportError:
+    _yaml = None  # type: ignore[assignment]  # update_openapi_url falls back to regex
 
 try:
     import certifi
@@ -1007,8 +1010,8 @@ class ControlPanel:
             text = openapi_file.read_text("utf-8")
             updated_text = None
             try:
-                payload = yaml.safe_load(text) or {}
-            except yaml.YAMLError:
+                payload = _yaml.safe_load(text) or {} if _yaml is not None else None
+            except Exception:
                 payload = None
 
             if isinstance(payload, dict):
@@ -1022,8 +1025,8 @@ class ControlPanel:
                         candidate, count = re.subn(pattern, rf"\1{url}\2", text, count=1, flags=re.MULTILINE)
                         if count:
                             updated_text = candidate
-                    if updated_text is None:
-                        updated_text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+                    if updated_text is None and _yaml is not None:
+                        updated_text = _yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
 
             if updated_text is None:
                 updated_text = re.sub(r"(^\s*-\s+url:\s*)https://[^\n]+", rf"\1{url}", text, count=1, flags=re.MULTILINE)
