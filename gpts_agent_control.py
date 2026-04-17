@@ -565,14 +565,31 @@ class ControlPanel:
                 "Python 3.14 для этого pinned stack не считается поддержанным.\n"
             )
             return False
-        self.write_log(f"Не нашёл готовый uvicorn. Создаю окружение и ставлю зависимости через {' '.join(python_cmd)}...\n")
+        self.write_log(f"Не нашёл готовый uvicorn. Создаю окружение через {' '.join(python_cmd)}...\n")
         try:
-            subprocess.run([*python_cmd, "-m", "venv", str(VENV_DIR)], cwd=PROJECT_DIR, check=True)
-            subprocess.run(
-                [str(VENV_DIR / ("Scripts/pip.exe" if IS_WINDOWS else "bin/pip")), "install", "-r", str(PROJECT_DIR / "requirements.txt")],
+            venv_result = subprocess.run(
+                [*python_cmd, "-m", "venv", str(VENV_DIR)],
                 cwd=PROJECT_DIR,
-                check=True,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, timeout=60,
             )
+            if venv_result.returncode != 0:
+                self.write_log(f"venv не создался:\n{venv_result.stdout or ''}\n")
+                return False
+            self.write_log("Виртуальное окружение создано. Устанавливаю зависимости...\n")
+            pip_bin = str(VENV_DIR / ("Scripts/pip.exe" if IS_WINDOWS else "bin/pip"))
+            pip_proc = subprocess.Popen(
+                [pip_bin, "install", "--quiet", "-r", str(PROJECT_DIR / "requirements.txt")],
+                cwd=PROJECT_DIR,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True,
+            )
+            threading.Thread(target=self._stream_process, args=(pip_proc, "pip"), daemon=True).start()
+            pip_proc.wait()
+            if pip_proc.returncode != 0:
+                self.write_log("pip install завершился с ошибкой — проверь лог выше.\n")
+                return False
+            self.write_log("Зависимости установлены.\n")
             return True
         except Exception as exc:
             self.write_log(f"Не смог подготовить Python-окружение через {' '.join(python_cmd)}: {exc}\n")
