@@ -44,11 +44,10 @@ IS_WINDOWS = os.name == "nt"
 VENV_DIR = PROJECT_DIR / ".venv"
 VENV_UVICORN = VENV_DIR / ("Scripts/uvicorn.exe" if IS_WINDOWS else "bin/uvicorn")
 LOCAL_URL = "http://127.0.0.1:8787"
-DEFAULT_WORKSPACE_ROOTS = (
-    os.pathsep.join([str(PROJECT_DIR), r"C:\Projects", r"D:\Workspace"])
-    if IS_WINDOWS
-    else os.pathsep.join([str(PROJECT_DIR), "/workspace", "/projects"])
-)
+# Default is just the project folder itself — do not add C:\Projects or
+# D:\Workspace which do not exist on most machines and confused users
+# into thinking they had to create those folders.
+DEFAULT_WORKSPACE_ROOTS = str(PROJECT_DIR)
 
 # --- Tunnel defaults ---
 DEFAULT_NGROK_DOMAIN = "your-domain.ngrok-free.dev"
