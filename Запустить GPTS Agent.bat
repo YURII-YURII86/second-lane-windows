@@ -22,13 +22,10 @@ REM ---------------------------------------------------------------
 set "SCRIPT=%~dp0gpts_agent_control.py"
 set "PYEXE="
 
-REM --- Try py launcher (Python 3.13, then 3.12, then default) ---
+REM --- Try py launcher (Python 3.13, then default only to open repair flow) ---
 where py >nul 2>nul
 if %errorlevel%==0 (
     for /f "delims=" %%i in ('py -3.13 -c "import sys; print(sys.executable)" 2^>nul') do set "PYEXE=%%i"
-    if not defined PYEXE (
-        for /f "delims=" %%i in ('py -3.12 -c "import sys; print(sys.executable)" 2^>nul') do set "PYEXE=%%i"
-    )
     if not defined PYEXE (
         for /f "delims=" %%i in ('py -c "import sys; print(sys.executable)" 2^>nul') do set "PYEXE=%%i"
     )

@@ -17,6 +17,8 @@ import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.core.config import token_is_safe
+
 try:
     from tkinter import BOTH, END, LEFT, RIGHT, X, Y, filedialog
     import tkinter as tk
@@ -46,6 +48,15 @@ NGROK_SIGNUP_URL = "https://dashboard.ngrok.com/signup"
 NGROK_AUTHTOKEN_URL = "https://dashboard.ngrok.com/get-started/your-authtoken"
 NGROK_DOMAINS_URL = "https://dashboard.ngrok.com/cloud-edge/domains"
 WINDOWS_GUIDE_URL = PROJECT_DIR / "docs" / "WINDOWS_FIRST_START.md"
+WINGET_NGROK_COMMAND = [
+    "winget",
+    "install",
+    "-e",
+    "--id",
+    "Ngrok.Ngrok",
+    "--accept-source-agreements",
+    "--accept-package-agreements",
+]
 
 INTERNET_CHECK_URLS = (
     "https://www.msftconnecttest.com/connecttest.txt",
@@ -54,20 +65,6 @@ INTERNET_CHECK_URLS = (
 )
 
 NGROK_DOMAIN_REGEX = re.compile(r"^[A-Za-z0-9-]+\.(?:ngrok-free\.dev|ngrok\.app)$")
-TOKEN_REGEX = re.compile(r"^[A-Za-z0-9._~-]{32,}$")
-WEAK_TOKENS = {
-    "",
-    "change-me",
-    "changeme",
-    "default",
-    "token",
-    "secret",
-    "password",
-    "example",
-    "replace-this-with-a-long-random-secret-token",
-    "long-random-secret-token-please-use-your-own-value",
-}
-WEAK_TOKEN_WORDS = ("change", "default", "example", "password", "replace", "secret", "token")
 
 PALETTE = {
     "app_bg": "#eef2f6",
@@ -141,20 +138,6 @@ def normalize_ngrok_domain(raw: str) -> str:
     cleaned = raw.strip()
     cleaned = re.sub(r"^https?://", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip().strip("/").lower()
-
-
-def token_is_safe(token: str) -> bool:
-    cleaned = token.strip()
-    lowered = cleaned.lower()
-    if len(cleaned) < 32:
-        return False
-    if lowered in WEAK_TOKENS:
-        return False
-    if len(set(cleaned)) <= 4:
-        return False
-    if any(word in lowered for word in WEAK_TOKEN_WORDS):
-        return False
-    return bool(TOKEN_REGEX.fullmatch(cleaned))
 
 
 def parse_env_text(text: str) -> dict[str, str]:
@@ -235,26 +218,80 @@ def ngrok_config_ok(ngrok_path: str) -> tuple[bool, str]:
     return True, "ok"
 
 
-def find_ngrok_path() -> str | None:
-    found = shutil.which("ngrok")
-    if found:
-        return found
+def normalize_exe_path(raw: str) -> str:
+    return raw.strip().strip("'\"")
+
+
+def is_ngrok_exe(path: Path) -> bool:
+    try:
+        return path.is_file() and path.name.lower() == "ngrok.exe"
+    except OSError:
+        return False
+
+
+def configured_ngrok_path() -> str:
+    env_values = parse_env_text(existing_env_text())
+    return normalize_exe_path(env_values.get("NGROK_PATH", ""))
+
+
+def iter_common_ngrok_candidates() -> list[Path]:
     local_appdata = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     user_profile = os.environ.get("USERPROFILE", "")
     candidates = [
         Path(local_appdata) / "Microsoft" / "WinGet" / "Links" / "ngrok.exe",
+        Path(local_appdata) / "ngrok" / "ngrok.exe",
         Path(program_files) / "ngrok" / "ngrok.exe",
         Path(user_profile) / "scoop" / "apps" / "ngrok" / "current" / "ngrok.exe",
         Path(r"C:\ProgramData\chocolatey\bin\ngrok.exe"),
+        Path(user_profile) / "Downloads" / "ngrok.exe",
     ]
-    for candidate in candidates:
+    for root in (
+        Path(local_appdata) / "Microsoft" / "WinGet" / "Packages",
+        Path(program_files) / "WinGet" / "Packages",
+    ):
         try:
-            if candidate.exists():
-                return str(candidate)
+            if root.exists():
+                candidates.extend(root.glob("**/ngrok.exe"))
         except OSError:
             continue
+    downloads = Path(user_profile) / "Downloads"
+    try:
+        if downloads.exists():
+            candidates.extend(downloads.glob("ngrok*/ngrok.exe"))
+    except OSError:
+        pass
+    return candidates
+
+
+def find_ngrok_path(preferred_path: str = "") -> str | None:
+    for raw in (preferred_path, configured_ngrok_path()):
+        cleaned = normalize_exe_path(raw)
+        if cleaned:
+            candidate = Path(cleaned).expanduser()
+            if is_ngrok_exe(candidate):
+                return str(candidate)
+    found = shutil.which("ngrok")
+    if found:
+        return found
+    for candidate in iter_common_ngrok_candidates():
+        if is_ngrok_exe(candidate):
+            return str(candidate)
     return None
+
+
+def install_ngrok_with_winget() -> tuple[bool, str]:
+    if os.name != "nt":
+        return False, "автоустановка ngrok через winget доступна только на Windows"
+    if shutil.which("winget") is None:
+        return False, "winget не найден. Поставь ngrok вручную или через Microsoft Store."
+    try:
+        code, output = run_capture(WINGET_NGROK_COMMAND, timeout=420)
+    except subprocess.TimeoutExpired:
+        return False, "winget слишком долго устанавливал ngrok и был остановлен по таймауту"
+    except OSError as exc:
+        return False, f"не смог запустить winget: {exc}"
+    return code == 0, output or f"winget завершился с кодом {code}"
 
 
 def python_candidates() -> list[list[str]]:
@@ -374,6 +411,7 @@ class InstallerApp:
         self.primary_button_text = tk.StringVar(value="Проверить, установить или починить всё")
         self.ngrok_token_var = tk.StringVar(value="")
         self.ngrok_domain_var = tk.StringVar(value="")
+        self.ngrok_path_var = tk.StringVar(value="")
         self.workspace_root_var = tk.StringVar(value=DEFAULT_WORKSPACE_ROOT)
         self.generated_token_var = tk.StringVar(value="")
         self.step_vars: dict[str, tk.StringVar] = {
@@ -460,6 +498,7 @@ class InstallerApp:
 
         buttons = [
             ("Открыть Python 3.13", lambda: self.open_external(PYTHON_DOWNLOAD_URL)),
+            ("Поставить ngrok автоматически", self.install_ngrok_auto),
             ("Открыть ngrok download", lambda: self.open_external(NGROK_DOWNLOAD_URL)),
             ("Открыть ngrok signup", lambda: self.open_external(NGROK_SIGNUP_URL)),
             ("Открыть authtoken page", lambda: self.open_external(NGROK_AUTHTOKEN_URL)),
@@ -494,6 +533,29 @@ class InstallerApp:
 
         self._field(card, "Authtoken ngrok", self.ngrok_token_var, "Скопируй из dashboard.ngrok.com/get-started/your-authtoken")
         self._field(card, "Reserved domain ngrok", self.ngrok_domain_var, "Например: my-team.ngrok-free.dev")
+
+        ngrok_wrap = tk.Frame(card, bg=PALETTE["surface"])
+        ngrok_wrap.pack(fill=X, pady=6)
+        tk.Label(ngrok_wrap, text="Путь к ngrok.exe, если Windows не нашла его сама", font=("Segoe UI", 10, "bold"), bg=PALETTE["surface"], fg=PALETTE["text"]).pack(anchor="w")
+        tk.Label(ngrok_wrap, text="Обычно это поле можно оставить пустым. Оно нужно только после ручной распаковки ngrok.", font=("Segoe UI", 9), bg=PALETTE["surface"], fg=PALETTE["muted"], wraplength=760, justify=LEFT).pack(anchor="w", pady=(2, 6))
+        ngrok_row = tk.Frame(ngrok_wrap, bg=PALETTE["surface"])
+        ngrok_row.pack(fill=X)
+        tk.Entry(ngrok_row, textvariable=self.ngrok_path_var, font=("Consolas", 10), relief="solid", bd=1).pack(side=LEFT, fill=X, expand=True)
+        tk.Button(
+            ngrok_row,
+            text="Выбрать ngrok.exe",
+            command=self.choose_ngrok_exe,
+            font=("Segoe UI", 10),
+            bg=PALETTE["accent_soft"],
+            fg=PALETTE["text"],
+            activebackground=PALETTE["panel"],
+            activeforeground=PALETTE["text"],
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=6,
+            cursor="hand2",
+        ).pack(side=RIGHT, padx=(8, 0))
 
         workspace_wrap = tk.Frame(card, bg=PALETTE["surface"])
         workspace_wrap.pack(fill=X, pady=6)
@@ -579,6 +641,7 @@ class InstallerApp:
         env_values = parse_env_text(existing_env_text())
         saved_domain = ""
         saved_workspace = DEFAULT_WORKSPACE_ROOT
+        saved_ngrok_path = ""
         if STATE_FILE.exists():
             try:
                 import json
@@ -586,11 +649,14 @@ class InstallerApp:
                 payload = json.loads(STATE_FILE.read_text("utf-8"))
                 saved_domain = str(payload.get("ngrok_domain", "")).strip()
                 saved_workspace = str(payload.get("workspace_root", DEFAULT_WORKSPACE_ROOT)).strip() or DEFAULT_WORKSPACE_ROOT
+                saved_ngrok_path = str(payload.get("ngrok_path", "")).strip()
             except Exception:
                 pass
         env_domain = normalize_ngrok_domain(env_values.get("NGROK_DOMAIN", ""))
         env_workspace = env_values.get("WORKSPACE_ROOTS", "").split(";", 1)[0].strip()
+        env_ngrok_path = normalize_exe_path(env_values.get("NGROK_PATH", ""))
         self.ngrok_domain_var.set(env_domain if env_domain and env_domain != "your-domain.ngrok-free.dev" else saved_domain)
+        self.ngrok_path_var.set(env_ngrok_path or saved_ngrok_path)
         self.workspace_root_var.set(env_workspace or saved_workspace)
         token = env_values.get("AGENT_TOKEN", "")
         if token_is_safe(token):
@@ -604,6 +670,7 @@ class InstallerApp:
 
             payload = {
                 "ngrok_domain": normalize_ngrok_domain(self.ngrok_domain_var.get()),
+                "ngrok_path": normalize_exe_path(self.ngrok_path_var.get()),
                 "workspace_root": self.workspace_root_var.get().strip(),
             }
             STATE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), "utf-8")
@@ -675,6 +742,66 @@ class InstallerApp:
         if picked:
             self.workspace_root_var.set(picked)
 
+    def choose_ngrok_exe(self) -> None:
+        if filedialog is None:
+            self.write_log("Не могу открыть системное окно выбора файла: tkinter недоступен.\n")
+            return
+        initial = normalize_exe_path(self.ngrok_path_var.get())
+        initial_dir = str(Path(initial).parent) if initial and Path(initial).parent.exists() else str(PROJECT_DIR)
+        picked = filedialog.askopenfilename(
+            initialdir=initial_dir,
+            title="Выбери ngrok.exe",
+            filetypes=[("ngrok.exe", "ngrok.exe"), ("Executable files", "*.exe"), ("All files", "*.*")],
+        )
+        if not picked:
+            return
+        candidate = Path(picked)
+        if not is_ngrok_exe(candidate):
+            self.write_log("Выбранный файл не похож на ngrok.exe. Проверь имя файла и попробуй ещё раз.\n")
+            return
+        self.ngrok_path_var.set(str(candidate))
+        self._save_state()
+        self.write_log(f"Сохранил путь к ngrok.exe: {candidate}\n")
+
+    def install_ngrok_auto(self) -> None:
+        if self.busy:
+            self.write_log("Сейчас уже идёт установка. Дождись завершения текущего шага.\n")
+            return
+        self.worker_queue.put(("busy", "1"))
+        threading.Thread(target=self._install_ngrok_auto_worker, daemon=True).start()
+
+    def _install_ngrok_auto_worker(self) -> None:
+        try:
+            self.set_step("ngrok", "running", "Ставлю через winget")
+            self.set_status("Пробую поставить ngrok автоматически")
+            ok, detail = install_ngrok_with_winget()
+            if not ok:
+                self.set_step("ngrok", "action", "Нужна ручная установка")
+                self.set_status("Автоустановка ngrok не сработала")
+                self.write_log(
+                    "Автоустановка ngrok не завершилась.\n"
+                    f"Что произошло: {detail[:1200]}\n"
+                    "Запасной путь: нажми «Открыть ngrok download», распакуй ngrok.exe и укажи его через «Выбрать ngrok.exe».\n"
+                )
+                self.open_external(NGROK_DOWNLOAD_URL)
+                return
+            ngrok_path = find_ngrok_path()
+            if not ngrok_path:
+                self.set_step("ngrok", "action", "Путь ещё не найден")
+                self.set_status("ngrok установлен, но Windows пока не отдаёт путь")
+                self.write_log(
+                    "winget завершился успешно, но мастер пока не видит ngrok.exe.\n"
+                    "Попробуй закрыть и открыть мастер заново или укажи файл через «Выбрать ngrok.exe».\n"
+                )
+                return
+            self.ngrok_path_var.set(ngrok_path)
+            self._save_state()
+            self.set_step("ngrok", "done", f"Найден: {ngrok_path}")
+            self.set_status("ngrok установлен")
+            self.write_log(f"ngrok готов: {ngrok_path}\n")
+        finally:
+            self.worker_queue.put(("busy", "0"))
+
     def open_external(self, url: str) -> None:
         webbrowser.open(url)
 
@@ -737,7 +864,7 @@ class InstallerApp:
             domain = self._step_domain()
             if domain is None:
                 return
-            token = self._step_env(domain)
+            token = self._step_env(domain, ngrok_path)
             if token is None:
                 return
             if not self._step_venv(python_cmd):
@@ -797,19 +924,37 @@ class InstallerApp:
     def _step_ngrok(self) -> str | None:
         self.set_step("ngrok", "running", "Проверяю")
         self.set_status("Проверяю ngrok")
-        ngrok_path = find_ngrok_path()
+        ngrok_path = find_ngrok_path(self.ngrok_path_var.get())
         if ngrok_path is None:
-            self.set_step("ngrok", "action", "Поставь ngrok")
-            self.set_status("Жду установку ngrok")
+            self.write_log("Не нашёл ngrok. Пробую поставить автоматически через winget...\n")
+            ok, detail = install_ngrok_with_winget()
+            if ok:
+                ngrok_path = find_ngrok_path(self.ngrok_path_var.get())
+                if ngrok_path is not None:
+                    self.ngrok_path_var.set(ngrok_path)
+                    self._save_state()
+                    self.set_step("ngrok", "done", f"Найден: {ngrok_path}")
+                    self.write_log(f"ngrok найден после автоустановки: {ngrok_path}\n")
+                    return ngrok_path
+                self.write_log(
+                    "winget завершился успешно, но мастер пока не видит ngrok.exe.\n"
+                    "Обычно помогает закрыть и открыть мастер заново. Если нет — укажи файл через «Выбрать ngrok.exe».\n"
+                )
+            else:
+                self.write_log(f"Автоустановка через winget не сработала: {detail[:1200]}\n")
+            self.set_step("ngrok", "action", "Поставь или выбери ngrok.exe")
+            self.set_status("Жду ngrok")
             self.write_log(
-                "Не нашёл ngrok.\n"
                 "Что сделать сейчас:\n"
-                "1. Нажми «Открыть ngrok signup», если аккаунта ещё нет.\n"
-                "2. Нажми «Открыть ngrok download» и поставь программу.\n"
-                "3. Потом снова нажми главную кнопку.\n"
+                "1. Если аккаунта ещё нет, нажми «Открыть ngrok signup».\n"
+                "2. Нажми «Открыть ngrok download» и скачай Windows-версию.\n"
+                "3. Если скачался zip, распакуй его и нажми «Выбрать ngrok.exe».\n"
+                "4. Потом снова нажми главную кнопку.\n"
             )
             self.open_external(NGROK_DOWNLOAD_URL)
             return None
+        self.ngrok_path_var.set(ngrok_path)
+        self._save_state()
         self.set_step("ngrok", "done", f"Найден: {ngrok_path}")
         self.write_log(f"ngrok найден: {ngrok_path}\n")
         return ngrok_path
@@ -898,7 +1043,7 @@ class InstallerApp:
         self.write_log(f"Домен принят: {domain}\n")
         return domain
 
-    def _step_env(self, domain: str) -> str | None:
+    def _step_env(self, domain: str, ngrok_path: str) -> str | None:
         self.set_step("env", "running", "Создаю")
         self.set_status("Заполняю .env")
         workspace_root = normalize_workspace_root(self.workspace_root_var.get()) or DEFAULT_WORKSPACE_ROOT
@@ -948,6 +1093,7 @@ class InstallerApp:
         env_text = set_env_value(env_text, "ENABLED_PROVIDER_MANIFESTS", str(PROJECT_DIR / "app" / "providers"))
         env_text = set_env_value(env_text, "STATE_DB_PATH", str(PROJECT_DIR / "data" / "agent.db"))
         env_text = set_env_value(env_text, "NGROK_DOMAIN", domain)
+        env_text = set_env_value(env_text, "NGROK_PATH", ngrok_path)
 
         try:
             ENV_FILE.write_text(env_text, "utf-8")
@@ -962,6 +1108,7 @@ class InstallerApp:
             ".env готов.\n"
             f"WORKSPACE_ROOTS начинается с: {workspace_root}\n"
             f"Итоговый список WORKSPACE_ROOTS: {merged_workspace_roots}\n"
+            f"NGROK_PATH сохранён: {ngrok_path}\n"
             "AGENT_TOKEN сохранён автоматически.\n"
         )
         return token

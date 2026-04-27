@@ -30,6 +30,9 @@ import datetime
 import platform as _platform
 import tkinter as tk
 from tkinter import BOTH, END, LEFT, Button, Frame, Label, StringVar, Text, Tk
+
+from app.core.config import token_is_safe
+
 try:
     import yaml as _yaml  # pyyaml — installed into .venv; may be absent on first launch
 except ImportError:
@@ -382,9 +385,7 @@ class ControlPanel:
         return self.load_env().get("AGENT_TOKEN", "")
 
     def agent_token_is_safe(self) -> bool:
-        token = self.agent_token().strip()
-        weak_tokens = {"", "change-me", "changeme", "default", "token", "replace-this-with-a-long-random-secret-token"}
-        return token not in weak_tokens and len(token) >= 24
+        return token_is_safe(self.agent_token())
 
     def explain_unsafe_token(self) -> None:
         self.write_log(
@@ -399,10 +400,10 @@ class ControlPanel:
             "3. Вставь после = длинный случайный набор символов\n"
             "4. Сохрани файл\n"
             "5. Снова нажми «Запустить»\n\n"
-            "Пример хорошего токена:\n"
-            "AGENT_TOKEN=long-random-secret-token-please-use-your-own-value\n\n"
+            "Самый простой способ создать хороший токен:\n"
+            "py -3.13 -c \"import secrets; print(secrets.token_urlsafe(48))\"\n\n"
             "Важно:\n"
-            "- не используй change-me, default, token;\n"
+            "- не используй change-me, default, token, secret, password или примеры из инструкции;\n"
             "- не публикуй этот токен в скриншотах и сообщениях.\n"
         )
 
@@ -465,6 +466,14 @@ class ControlPanel:
 
     def _find_ngrok(self) -> str | None:
         """Return full path to ngrok, checking PATH and common install locations."""
+        configured_path = self.load_env().get("NGROK_PATH", "").strip().strip("'\"")
+        if configured_path:
+            candidate = Path(configured_path).expanduser()
+            try:
+                if candidate.is_file() and candidate.name.lower() == "ngrok.exe":
+                    return str(candidate)
+            except OSError:
+                pass
         found = shutil.which("ngrok")
         if found:
             return found
@@ -476,9 +485,11 @@ class ControlPanel:
             _up  = os.environ.get("USERPROFILE", "")
             candidates = [
                 Path(_lad) / "Microsoft" / "WinGet" / "Links" / "ngrok.exe",
+                Path(_lad) / "ngrok" / "ngrok.exe",
                 Path(_pf)  / "ngrok" / "ngrok.exe",
                 Path(_up)  / "scoop" / "apps" / "ngrok" / "current" / "ngrok.exe",
                 Path(r"C:\ProgramData\chocolatey\bin\ngrok.exe"),
+                Path(_up) / "Downloads" / "ngrok.exe",
             ]
             for c in candidates:
                 try:
@@ -487,13 +498,35 @@ class ControlPanel:
                         return str(c)
                 except Exception:
                     pass
+            for root in (
+                Path(_lad) / "Microsoft" / "WinGet" / "Packages",
+                Path(_pf) / "WinGet" / "Packages",
+            ):
+                try:
+                    if not root.exists():
+                        continue
+                    for c in root.glob("**/ngrok.exe"):
+                        if c.is_file():
+                            self.write_log(f"ngrok найден поиском: {c}\n")
+                            return str(c)
+                except Exception:
+                    pass
+            downloads = Path(_up) / "Downloads"
+            try:
+                if downloads.exists():
+                    for c in downloads.glob("ngrok*/ngrok.exe"):
+                        if c.is_file():
+                            self.write_log(f"ngrok найден поиском: {c}\n")
+                            return str(c)
+            except Exception:
+                pass
         return None
 
     def _preflight_tunnel_check(self) -> tuple[bool, str]:
         ngrok_path = self._find_ngrok()
         if not ngrok_path:
             install_hint = (
-                "ngrok не найден. Установи: winget install Ngrok.Ngrok"
+                "ngrok не найден. Открой установщик: он попробует поставить ngrok автоматически или даст выбрать ngrok.exe"
                 if IS_WINDOWS
                 else "ngrok не найден. Установи: brew install ngrok"
             )
