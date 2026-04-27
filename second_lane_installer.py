@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import os
 import queue
 import re
@@ -15,9 +16,16 @@ import urllib.request
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
-from tkinter import BOTH, END, LEFT, RIGHT, X, Y, filedialog
-import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
+
+try:
+    from tkinter import BOTH, END, LEFT, RIGHT, X, Y, filedialog
+    import tkinter as tk
+    from tkinter.scrolledtext import ScrolledText
+except Exception:  # pragma: no cover - runtime fallback for partial Python installs
+    BOTH = END = LEFT = RIGHT = X = Y = None  # type: ignore[assignment]
+    filedialog = None  # type: ignore[assignment]
+    ScrolledText = None  # type: ignore[assignment]
+    tk = None  # type: ignore[assignment]
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -29,6 +37,8 @@ REQUIREMENTS_FILE = PROJECT_DIR / "requirements.txt"
 CONTROL_PANEL_FILE = PROJECT_DIR / "gpts_agent_control.py"
 LAUNCHER_FILE = PROJECT_DIR / "Запустить GPTS Agent.bat"
 DEFAULT_WORKSPACE_ROOT = str(PROJECT_DIR)
+VENV_PYTHON = VENV_DIR / "Scripts" / "python.exe"
+VENV_UVICORN = VENV_DIR / "Scripts" / "uvicorn.exe"
 
 PYTHON_DOWNLOAD_URL = "https://www.python.org/downloads/windows/"
 NGROK_DOWNLOAD_URL = "https://ngrok.com/download"
@@ -80,6 +90,13 @@ class StepSpec:
     key: str
     title: str
     description: str
+
+
+@dataclass(frozen=True)
+class InstallHealth:
+    needs_repair: bool
+    summary: str
+    issues: tuple[str, ...]
 
 
 STEP_SPECS: list[StepSpec] = [
@@ -208,6 +225,16 @@ def run_capture(command: list[str], timeout: int = 20) -> tuple[int, str]:
     return result.returncode, (result.stdout or "").strip()
 
 
+def ngrok_config_ok(ngrok_path: str) -> tuple[bool, str]:
+    try:
+        code, output = run_capture([ngrok_path, "config", "check"], timeout=12)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f"не смог проверить ngrok config: {exc}"
+    if code != 0:
+        return False, output or "ngrok config check завершился с ошибкой"
+    return True, "ok"
+
+
 def find_ngrok_path() -> str | None:
     found = shutil.which("ngrok")
     if found:
@@ -256,16 +283,95 @@ def resolve_python_313() -> list[str] | None:
     return None
 
 
+def venv_health_check() -> tuple[bool, str]:
+    if not VENV_PYTHON.exists():
+        return False, "не найден .venv\\Scripts\\python.exe"
+    if not VENV_UVICORN.exists():
+        return False, "не найден .venv\\Scripts\\uvicorn.exe"
+    try:
+        code, output = run_capture(
+            [
+                str(VENV_PYTHON),
+                "-c",
+                "import fastapi, pydantic, uvicorn; print('ok')",
+            ],
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f"не смог проверить .venv: {exc}"
+    if code != 0 or "ok" not in output:
+        detail = output or "импорт зависимостей не прошёл"
+        return False, detail
+    return True, "ok"
+
+
+def assess_install_health() -> InstallHealth:
+    issues: list[str] = []
+
+    if os.name != "nt":
+        issues.append("этот репозиторий и установщик рассчитаны на Windows")
+
+    python_cmd = resolve_python_313()
+    if python_cmd is None:
+        issues.append("не найден рабочий Python 3.13")
+
+    ngrok_path = find_ngrok_path()
+    if ngrok_path is None:
+        issues.append("не найден ngrok")
+    else:
+        ngrok_ok, ngrok_detail = ngrok_config_ok(ngrok_path)
+        if not ngrok_ok:
+            issues.append(f"ngrok ещё не готов: {ngrok_detail}")
+
+    if not ENV_FILE.exists():
+        issues.append("ещё нет файла .env")
+    else:
+        env_values = parse_env_text(existing_env_text())
+        token = env_values.get("AGENT_TOKEN", "")
+        if not token_is_safe(token):
+            issues.append("AGENT_TOKEN отсутствует или выглядит как заглушка")
+        domain = normalize_ngrok_domain(env_values.get("NGROK_DOMAIN", ""))
+        if not domain or domain == "your-domain.ngrok-free.dev" or not NGROK_DOMAIN_REGEX.fullmatch(domain):
+            issues.append("NGROK_DOMAIN не заполнен или выглядит неверно")
+        workspace_root = normalize_workspace_root(env_values.get("WORKSPACE_ROOTS", "").split(";", 1)[0])
+        if not workspace_root:
+            issues.append("WORKSPACE_ROOTS не заполнен")
+        else:
+            workspace_path = Path(workspace_root)
+            if not workspace_path.exists():
+                issues.append(f"главная папка WORKSPACE_ROOTS не найдена: {workspace_root}")
+            elif not workspace_path.is_dir():
+                issues.append(f"главный путь WORKSPACE_ROOTS ведёт не в папку: {workspace_root}")
+
+    venv_ok, venv_detail = venv_health_check()
+    if not venv_ok:
+        issues.append(f".venv не готов: {venv_detail}")
+
+    if issues:
+        return InstallHealth(
+            needs_repair=True,
+            summary="Нашёл несколько вещей, которые лучше автоматически подготовить или починить.",
+            issues=tuple(issues),
+        )
+    return InstallHealth(
+        needs_repair=False,
+        summary="Похоже, установка уже выглядит здоровой. Можно использовать мастер как перепроверку или быстрый ремонт.",
+        issues=(),
+    )
+
+
 class InstallerApp:
     def __init__(self) -> None:
+        if tk is None:
+            raise RuntimeError("Tkinter недоступен. Нужен полный Python с графическими компонентами.")
         self.root = tk.Tk()
         self.root.title("Secondary LANE Installer")
         self.root.geometry("1280x820")
         self.root.minsize(1080, 720)
         self.root.configure(bg=PALETTE["app_bg"])
 
-        self.status_var = tk.StringVar(value="Готов помочь с установкой")
-        self.primary_button_text = tk.StringVar(value="Проверить и настроить всё")
+        self.status_var = tk.StringVar(value="Готов помочь с установкой или ремонтом")
+        self.primary_button_text = tk.StringVar(value="Проверить, установить или починить всё")
         self.ngrok_token_var = tk.StringVar(value="")
         self.ngrok_domain_var = tk.StringVar(value="")
         self.workspace_root_var = tk.StringVar(value=DEFAULT_WORKSPACE_ROOT)
@@ -278,6 +384,7 @@ class InstallerApp:
 
         self._load_state()
         self._build_ui()
+        self._announce_initial_health()
         self.root.after(120, self._poll_worker_queue)
 
     def _build_ui(self) -> None:
@@ -466,11 +573,7 @@ class InstallerApp:
         )
         self.log.pack(fill=BOTH, expand=True)
         self.log.configure(highlightthickness=1, highlightbackground=PALETTE["border"], highlightcolor=PALETTE["accent"])
-        self.write_log(
-            "Мастер готов.\n"
-            "Нажми «Проверить и настроить всё».\n"
-            "Если чего-то не хватает, здесь же подскажу, что сделать простыми словами.\n"
-        )
+        self.write_log("Мастер запускается...\n")
 
     def _load_state(self) -> None:
         env_values = parse_env_text(existing_env_text())
@@ -506,6 +609,24 @@ class InstallerApp:
             STATE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), "utf-8")
         except Exception:
             pass
+
+    def _announce_initial_health(self) -> None:
+        health = assess_install_health()
+        self.status_var.set(health.summary)
+        self.write_log(f"{health.summary}\n")
+        if health.issues:
+            self.write_log("Что именно вижу сейчас:\n")
+            for issue in health.issues:
+                self.write_log(f"- {issue}\n")
+            self.write_log(
+                "\nНажми «Проверить, установить или починить всё».\n"
+                "Мастер постарается сам довести состояние до рабочего.\n"
+            )
+        else:
+            self.write_log(
+                "Критичных проблем не вижу.\n"
+                "Можешь использовать кнопку как перепроверку или быстрый repair-pass.\n"
+            )
 
     def _poll_worker_queue(self) -> None:
         while True:
@@ -547,6 +668,9 @@ class InstallerApp:
 
     def choose_workspace(self) -> None:
         initial = self.workspace_root_var.get().strip() or DEFAULT_WORKSPACE_ROOT
+        if filedialog is None:
+            self.write_log("Не могу открыть системное окно выбора папки: tkinter недоступен.\n")
+            return
         picked = filedialog.askdirectory(initialdir=initial if Path(initial).exists() else str(PROJECT_DIR))
         if picked:
             self.workspace_root_var.set(picked)
@@ -575,9 +699,9 @@ class InstallerApp:
             try:
                 os.startfile(str(LAUNCHER_FILE))  # type: ignore[attr-defined]
                 self.write_log("Открыл запуск панели.\n")
+                return
             except Exception as exc:
                 self.write_log(f"Не смог запустить панель через .bat: {exc}\n")
-            return
         python_cmd = resolve_python_313()
         if python_cmd is None:
             self.write_log("Сначала нужен Python 3.13 и завершённая установка.\n")
@@ -663,7 +787,7 @@ class InstallerApp:
                 "1. Нажми «Открыть Python 3.13».\n"
                 "2. Поставь Windows installer 64-bit.\n"
                 "3. Во время установки обязательно включи «Add python.exe to PATH».\n"
-                "4. Потом снова нажми главную кнопку в этом мастере.\n"
+                "4. Если мастер не открылся сам после установки, просто снова запусти этот же установщик.\n"
             )
             return None
         self.set_step("python", "done", f"Найден: {' '.join(command)}")
@@ -693,17 +817,13 @@ class InstallerApp:
     def _step_auth(self, ngrok_path: str) -> bool:
         self.set_step("auth", "running", "Проверяю")
         self.set_status("Проверяю ключ ngrok")
-        try:
-            code, output = run_capture([ngrok_path, "config", "check"], timeout=12)
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            self.set_step("auth", "error", "Не смог проверить")
-            self.set_status("Не смог проверить конфиг ngrok")
-            self.write_log(f"Не смог проверить ngrok config: {exc}\n")
-            return False
-        if code == 0:
+        ok, detail = ngrok_config_ok(ngrok_path)
+        if ok:
             self.set_step("auth", "done", "Ключ уже настроен")
             self.write_log("ngrok уже привязан к аккаунту.\n")
             return True
+        if detail and "authentication failed" not in detail.lower() and "invalid authtoken" not in detail.lower():
+            self.write_log(f"Текущий ngrok config ещё не готов: {detail}\n")
 
         authtoken = normalize_ngrok_token(self.ngrok_token_var.get())
         if not authtoken:
@@ -849,11 +969,28 @@ class InstallerApp:
     def _step_venv(self, python_cmd: list[str]) -> bool:
         self.set_step("venv", "running", "Ставлю зависимости")
         self.set_status("Готовлю рабочее окружение Python")
-        uvicorn_bin = VENV_DIR / "Scripts" / "uvicorn.exe"
-        if uvicorn_bin.exists():
+        venv_ok, venv_detail = venv_health_check()
+        if venv_ok:
             self.set_step("venv", "done", "Окружение уже готово")
-            self.write_log("Готовое окружение уже найдено, заново не пересобираю.\n")
+            self.write_log("Готовое и рабочее окружение уже найдено, заново не пересобираю.\n")
             return True
+        if VENV_DIR.exists():
+            self.write_log(
+                "Нашёл .venv, но оно выглядит неполным или сломанным.\n"
+                f"Причина: {venv_detail}\n"
+                "Удаляю старое окружение и пересобираю его с нуля.\n"
+            )
+            try:
+                shutil.rmtree(VENV_DIR)
+            except OSError as exc:
+                self.set_step("venv", "error", "Не смог очистить старую .venv")
+                self.set_status("Закрой процессы, которые держат .venv")
+                self.write_log(
+                    "Не смог удалить старое окружение.\n"
+                    f"Техническая причина: {exc}\n"
+                    "Закрой открытые окна панели, терминалы, VS Code или антивирусный lock и попробуй ещё раз.\n"
+                )
+                return False
 
         self.write_log(f"Создаю .venv через {' '.join(python_cmd)} -m venv ...\n")
         try:
@@ -900,6 +1037,16 @@ class InstallerApp:
             )
             return False
 
+        final_ok, final_detail = venv_health_check()
+        if not final_ok:
+            self.set_step("venv", "error", "Окружение собрано, но не ожило")
+            self.set_status("Проблема внутри .venv")
+            self.write_log(
+                "После установки зависимостей окружение всё ещё не прошло проверку.\n"
+                f"Что именно не так: {final_detail}\n"
+            )
+            return False
+
         self.set_step("venv", "done", ".venv готов")
         self.write_log("Зависимости установлены. Окружение готово.\n")
         return True
@@ -922,4 +1069,11 @@ class InstallerApp:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--needs-repair", action="store_true")
+    args, _ = parser.parse_known_args()
+
+    if args.needs_repair:
+        raise SystemExit(1 if assess_install_health().needs_repair else 0)
+
     InstallerApp().run()

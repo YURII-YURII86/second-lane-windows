@@ -46,6 +46,10 @@ if not defined PYEXE goto :nopython
 
 REM --- Prefer pythonw.exe (no console window) ---
 set "PYWEXE=!PYEXE:python.exe=pythonw.exe!"
+
+"!PYEXE!" "%~dp0second_lane_installer.py" --needs-repair >nul 2>nul
+if errorlevel 1 goto :runinstaller
+
 if exist "!PYWEXE!" (
     start "" "!PYWEXE!" "!SCRIPT!"
     goto :eof

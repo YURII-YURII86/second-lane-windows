@@ -126,9 +126,10 @@ The easiest path now is:
 1. Put the project folder somewhere simple, for example `C:\SecondLane`
 2. Double-click `Установить Secondary LANE.bat`
 3. Follow the installer window
-4. When the installer finishes, it opens the panel for you or leaves a clear `Запустить панель` button
+4. If Python is missing, the installer first walks you through that and then retries
+5. When the installer finishes, it opens the panel for you or leaves a clear `Запустить панель` button
 
-The installer checks Python 3.13, helps with ngrok, creates `.env`, prepares `.venv`, and leaves only the truly human steps to you.
+The installer checks Python 3.13, helps with ngrok, creates `.env`, prepares `.venv`, repairs broken local setup, and leaves only the truly human steps to you.
 
 If you prefer another route, here are the options.
 
@@ -147,7 +148,7 @@ If you want the simplest beginner-friendly route, start here.
 1. Double-click `Установить Secondary LANE.bat`
 2. If the installer says Python or ngrok is missing, use its buttons and come back
 3. Paste your ngrok authtoken and reserved domain into the installer
-4. Let it prepare `.env` and `.venv`
+4. Let it prepare or repair `.env` and `.venv`
 5. Let it open the panel for you, or click `Запустить панель` if Windows asks you to confirm the launch
 
 For a more detailed walkthrough with explanations and screenshots, use:

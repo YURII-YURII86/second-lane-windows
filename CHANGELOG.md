@@ -35,6 +35,7 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - Windows-пакет был ужат: из репозитория убраны non-operational launch/demo/planning-файлы, которые не были нужны для runtime, onboarding, verification или GPT setup
 - `Запустить GPTS Agent.bat` теперь сначала отправляет неподготовленную установку в мастер, а не оставляет человека один на один с ручными шагами
 - GitHub-репозиторий Windows-версии дополнительно очищен от dev-only skill-папок, тестов, deploy-артефактов и внутренних документов, чтобы скачавший пользователь видел только нужное для установки и работы
+- установщик теперь умеет явный repair-pass: сильнее проверяет `.env`, валидирует `ngrok`, лечит сломанное `.venv` и строже решает, когда запуск нужно снова отправить в мастер
 
 ## EN
 
@@ -68,3 +69,4 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - the Windows package was tightened by removing non-operational launch/demo/planning files that were not needed for runtime, onboarding, verification, or GPT setup
 - `Запустить GPTS Agent.bat` now redirects unprepared installs into the installer instead of dropping beginners into manual setup
 - the GitHub Windows repo was further cleaned of dev-only skill folders, tests, deploy artifacts, and internal docs so a normal downloader only sees what is needed to install and use the product
+- the installer now has an explicit repair pass: it validates `.env` more strictly, checks `ngrok`, rebuilds broken `.venv` setups, and makes the launcher more aggressive about routing broken installs back into the guided flow
