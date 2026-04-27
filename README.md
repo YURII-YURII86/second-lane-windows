@@ -121,17 +121,42 @@ That makes Secondary LANE useful not only as a backup when another agent hits a 
 
 ## Quick Start (Windows)
 
-Before you start, you need **three things** installed / created once:
+The easiest path now is:
+
+1. Put the project folder somewhere simple, for example `C:\SecondLane`
+2. Double-click `Установить Secondary LANE.bat`
+3. Follow the installer window
+4. When the installer finishes, it opens the panel for you or leaves a clear `Запустить панель` button
+
+The installer checks Python 3.13, helps with ngrok, creates `.env`, prepares `.venv`, and leaves only the truly human steps to you.
+
+If you prefer another route, here are the options.
+
+Before you start, you still need **three things** available at some point:
 
 1. **Python 3.13** for Windows — [python.org/downloads/windows](https://www.python.org/downloads/windows/) (tick "Add python.exe to PATH")
 2. **ngrok** account + a reserved free domain — [dashboard.ngrok.com](https://dashboard.ngrok.com) (free tier is enough)
 3. **ChatGPT Plus** (or any plan that supports Custom GPTs with Actions)
 
-Then pick one of two paths.
+Then pick one of three paths.
 
-### Path A — Let an agent do it (Codex / Claude Code)
+### Path A — Use the built-in installer
 
-If you already have **Codex or Claude Code** installed, this is the fastest.
+If you want the simplest beginner-friendly route, start here.
+
+1. Double-click `Установить Secondary LANE.bat`
+2. If the installer says Python or ngrok is missing, use its buttons and come back
+3. Paste your ngrok authtoken and reserved domain into the installer
+4. Let it prepare `.env` and `.venv`
+5. Let it open the panel for you, or click `Запустить панель` if Windows asks you to confirm the launch
+
+For a more detailed walkthrough with explanations and screenshots, use:
+
+**[docs/WINDOWS_FIRST_START.md](docs/WINDOWS_FIRST_START.md)**
+
+### Path B — Let an agent do it (Codex / Claude Code)
+
+If you already have **Codex or Claude Code** installed, this is the fastest automated route.
 
 Pass this file to the agent:
 
@@ -145,9 +170,9 @@ Deploy Secondary LANE for me.
 
 The agent will check Python, help with ngrok, fill `.env`, launch the panel, verify the tunnel, and walk you through GPT setup. You only step in for login, captcha, email confirmation, or payment.
 
-### Path B — Manual install (no agent needed)
+### Path C — Manual install (no agent needed)
 
-If you **don't have Codex/Claude Code**, follow the step-by-step beginner guide:
+If you prefer doing everything by hand, use the step-by-step beginner guide:
 
 **[docs/WINDOWS_FIRST_START.md](docs/WINDOWS_FIRST_START.md)** — full guide with screenshots and explanations.
 
@@ -168,7 +193,7 @@ py -3.13 -m venv .venv
 py -3.13 gpts_agent_control.py
 ```
 
-Or just **double-click `Запустить GPTS Agent.bat`** — it does the launch step for you.
+Or just **double-click `Установить Secondary LANE.bat`** first — it now prepares the missing setup automatically and then leads you to the panel.
 
 > Generate a strong `AGENT_TOKEN` with:
 > `py -3.13 -c "import secrets; print(secrets.token_urlsafe(48))"`

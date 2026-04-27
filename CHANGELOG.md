@@ -24,6 +24,7 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - двуязычная рамка README вокруг идеи продолжения работы после лимитов Claude Code / Codex
 - служебные документы репозитория: roadmap, contributing guide, security policy и license
 - отдельная инструкция `docs/WINDOWS_FIRST_START.md` для первого запуска Windows-версии
+- отдельный Windows-мастер `Установить Secondary LANE.bat` + `second_lane_installer.py`, который ведёт человека через Python, ngrok, `.env` и `.venv`
 
 #### Изменено
 
@@ -32,6 +33,7 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - README теперь содержит comparison framing, use cases и current status
 - документация теперь жёстко фиксирует Python `3.13` как рабочий локальный путь, а repo-local verify/test контур приводит к стандартному `.venv`
 - Windows-пакет был ужат: из репозитория убраны non-operational launch/demo/planning-файлы, которые не были нужны для runtime, onboarding, verification или GPT setup
+- `Запустить GPTS Agent.bat` теперь сначала отправляет неподготовленную установку в мастер, а не оставляет человека один на один с ручными шагами
 
 ## EN
 
@@ -54,6 +56,7 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - bilingual README framing around continuation after Claude Code / Codex limits
 - repository metadata docs: roadmap, contributing guide, security policy, and license
 - dedicated `docs/WINDOWS_FIRST_START.md` onboarding guide for the Windows-focused build
+- a dedicated Windows installer flow via `Установить Secondary LANE.bat` + `second_lane_installer.py` that walks the user through Python, ngrok, `.env`, and `.venv`
 
 #### Changed
 
@@ -62,3 +65,4 @@ Telegram: https://t.me/yurii_yurii86 · YouTube: https://youtube.com/@yurii_yuri
 - README now includes comparison framing, use cases, and current status
 - documentation now explicitly fixes Python `3.13` as the supported local path and standardizes the repo-local verify/test environment around `.venv`
 - the Windows package was tightened by removing non-operational launch/demo/planning files that were not needed for runtime, onboarding, verification, or GPT setup
+- `Запустить GPTS Agent.bat` now redirects unprepared installs into the installer instead of dropping beginners into manual setup

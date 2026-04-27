@@ -30,6 +30,7 @@ data/*.db
 
 # Local project memory and generated state
 .ai_context/
+.installer_state.json
 
 # Temporary local outputs
 .tmp_*

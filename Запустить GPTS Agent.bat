@@ -8,6 +8,11 @@ chcp 65001 >nul 2>nul
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
+if not exist "%~dp0.env" goto :runinstaller
+findstr /B /C:"AGENT_TOKEN=replace-this-with-a-long-random-secret-token" "%~dp0.env" >nul 2>nul && goto :runinstaller
+findstr /B /C:"NGROK_DOMAIN=your-domain.ngrok-free.dev" "%~dp0.env" >nul 2>nul && goto :runinstaller
+if not exist "%~dp0.venv\Scripts\uvicorn.exe" goto :runinstaller
+
 REM ---------------------------------------------------------------
 REM Launch gpts_agent_control.py using pythonw.exe (GUI subsystem)
 REM so NO console window appears alongside the Tkinter panel.
@@ -48,6 +53,23 @@ if exist "!PYWEXE!" (
 
 REM --- Fallback: python.exe (console window will appear briefly) ---
 start "" "!PYEXE!" "!SCRIPT!"
+goto :eof
+
+:runinstaller
+echo.
+echo =========================================================
+echo   Secondary LANE is not configured yet.
+echo   Opening the installer first so setup stays simple.
+echo =========================================================
+echo.
+if exist "%~dp0Установить Secondary LANE.bat" (
+    start "" "%~dp0Установить Secondary LANE.bat"
+    goto :eof
+)
+echo Installer file not found:
+echo   %~dp0Установить Secondary LANE.bat
+echo.
+pause
 goto :eof
 
 :nopython
