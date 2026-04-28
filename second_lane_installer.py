@@ -678,6 +678,7 @@ class InstallerApp:
         self.ngrok_path_var = tk.StringVar(value="")
         self.workspace_root_var = tk.StringVar(value=DEFAULT_WORKSPACE_ROOT)
         self.generated_token_var = tk.StringVar(value="")
+        self.agent_token_var = tk.StringVar(value="")
         self.current_step_key = STEP_SPECS[0].key
         self.step_status: dict[str, str] = {spec.key: "pending" for spec in STEP_SPECS}
         self.step_vars: dict[str, tk.StringVar] = {
@@ -954,6 +955,47 @@ class InstallerApp:
             justify=LEFT,
         ).pack(anchor="w", pady=(2, 6))
         tk.Label(self.token_box, textvariable=self.generated_token_var, font=("Consolas", 10), bg=PALETTE["panel"], fg=PALETTE["text"]).pack(anchor="w")
+        tk.Label(
+            self.token_box,
+            text="Полный AGENT_TOKEN для GPT Actions:",
+            font=("Segoe UI", 9, "bold"),
+            bg=PALETTE["panel"],
+            fg=PALETTE["text"],
+        ).pack(anchor="w", pady=(8, 3))
+        agent_token_row = tk.Frame(self.token_box, bg=PALETTE["panel"])
+        agent_token_row.pack(fill=X)
+        self.agent_token_entry = tk.Entry(agent_token_row, textvariable=self.agent_token_var, font=("Consolas", 10), relief="solid", bd=1)
+        self.agent_token_entry.pack(side=LEFT, fill=X, expand=True)
+        tk.Button(
+            agent_token_row,
+            text="Скопировать AGENT_TOKEN",
+            command=self.copy_agent_token,
+            font=("Segoe UI", 10),
+            bg=PALETTE["accent_soft"],
+            fg=PALETTE["text"],
+            activebackground=PALETTE["surface"],
+            activeforeground=PALETTE["text"],
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=6,
+            cursor="hand2",
+        ).pack(side=RIGHT, padx=(8, 0))
+        tk.Button(
+            self.token_box,
+            text="Открыть .env",
+            command=self.open_env_file,
+            font=("Segoe UI", 9),
+            bg=PALETTE["accent_soft"],
+            fg=PALETTE["text"],
+            activebackground=PALETTE["surface"],
+            activeforeground=PALETTE["text"],
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=5,
+            cursor="hand2",
+        ).pack(anchor="w", pady=(8, 0))
 
         button_row = tk.Frame(card, bg=PALETTE["surface"])
         button_row.pack(fill=X, pady=(14, 0))
@@ -1143,6 +1185,37 @@ class InstallerApp:
         except tk.TclError:
             return ""
 
+    def copy_agent_token(self) -> None:
+        token = self.agent_token_var.get().strip()
+        if not token:
+            env_token = parse_env_text(existing_env_text()).get("AGENT_TOKEN", "")
+            if token_is_safe(env_token):
+                token = env_token
+                self.agent_token_var.set(token)
+                self.generated_token_var.set("AGENT_TOKEN найден в .env. Его можно вставлять в GPT Actions.")
+        if not token_is_safe(token):
+            self.write_log("AGENT_TOKEN ещё не создан. Дай мастеру завершить шаг файла настроек Second Lane.\n")
+            return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(token)
+        self.status_var.set("AGENT_TOKEN скопирован")
+        self.write_log("AGENT_TOKEN скопирован в буфер обмена. В GPT Actions вставляй его как Bearer API key.\n")
+
+    def open_env_file(self) -> None:
+        if not ENV_FILE.exists():
+            self.write_log("Файл .env пока не создан. Дай мастеру завершить шаг файла настроек Second Lane.\n")
+            return
+        try:
+            if os.name == "nt":
+                os.startfile(str(ENV_FILE))  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(ENV_FILE)], cwd=PROJECT_DIR)
+            else:
+                subprocess.Popen(["xdg-open", str(ENV_FILE)], cwd=PROJECT_DIR)
+            self.write_log("Открыл файл .env.\n")
+        except Exception as exc:
+            self.write_log(f"Не смог открыть .env автоматически: {exc}\n")
+
     def on_secondary_action(self) -> None:
         key = self.current_step_key
         status = self.step_status.get(key, "pending")
@@ -1225,8 +1298,10 @@ class InstallerApp:
         self.workspace_root_var.set(env_workspace or saved_workspace)
         token = env_values.get("AGENT_TOKEN", "")
         if token_is_safe(token):
-            self.generated_token_var.set(f"Существующий токен сохранится: {token[:8]}...{token[-6:]}")
+            self.agent_token_var.set(token)
+            self.generated_token_var.set("AGENT_TOKEN уже есть. Его можно скопировать кнопкой ниже.")
         else:
+            self.agent_token_var.set("")
             self.generated_token_var.set("Новый токен будет создан автоматически во время установки")
 
     def _save_state(self) -> None:
@@ -1277,6 +1352,10 @@ class InstallerApp:
                 self.log.see(END)
             elif kind == "status":
                 self.status_var.set(payload)
+            elif kind == "agent_token":
+                self.agent_token_var.set(payload)
+            elif kind == "token_status":
+                self.generated_token_var.set(payload)
             elif kind.startswith("step:"):
                 _, key = kind.split(":", 1)
                 self.step_vars[key].set(payload)
@@ -1310,6 +1389,10 @@ class InstallerApp:
         text = f"{STATUS_ICON.get(status, '○')} {detail or STATUS_TEXT.get(status, status)}"
         self.worker_queue.put((f"step_state:{key}", status))
         self.worker_queue.put((f"step:{key}", text))
+
+    def set_agent_token_display(self, token: str, message: str) -> None:
+        self.worker_queue.put(("agent_token", token))
+        self.worker_queue.put(("token_status", message))
 
     def choose_workspace(self) -> None:
         initial = self.workspace_root_var.get().strip() or DEFAULT_WORKSPACE_ROOT
@@ -1371,6 +1454,7 @@ class InstallerApp:
         self.ngrok_domain_var.set("")
         self.ngrok_path_var.set("")
         self.workspace_root_var.set(DEFAULT_WORKSPACE_ROOT)
+        self.agent_token_var.set("")
         self.generated_token_var.set("Новый токен будет создан автоматически во время установки")
 
         for spec in STEP_SPECS:
@@ -1441,27 +1525,44 @@ class InstallerApp:
     def _install_worker(self) -> None:
         for spec in STEP_SPECS:
             self.set_step(spec.key, "pending", "Ожидание")
+        step_key = "system"
         try:
             self.set_status("Начинаю проверку")
+            step_key = "system"
             if not self._step_system():
                 return
+            step_key = "python"
             python_cmd = self._step_python()
             if python_cmd is None:
                 return
+            step_key = "ngrok"
             ngrok_path = self._step_ngrok()
             if ngrok_path is None:
                 return
+            step_key = "auth"
             if not self._step_auth(ngrok_path):
                 return
+            step_key = "domain"
             domain = self._step_domain()
             if domain is None:
                 return
+            step_key = "env"
             token = self._step_env(domain, ngrok_path)
             if token is None:
                 return
+            step_key = "venv"
             if not self._step_venv(python_cmd):
                 return
+            step_key = "finish"
             self._step_finish(token)
+        except Exception as exc:
+            self.set_step(step_key, "error", "Мастер остановился")
+            self.set_status("Мастер остановился на ошибке")
+            self.write_log(
+                "Мастер поймал ошибку и остановился безопасно.\n"
+                f"Шаг: {STEP_BY_KEY.get(step_key, STEP_SPECS[0]).title}\n"
+                f"Техническая причина: {exc}\n"
+            )
         finally:
             self.worker_queue.put(("busy", "0"))
 
@@ -1677,7 +1778,7 @@ class InstallerApp:
         token = current_values.get("AGENT_TOKEN", "")
         if not token_is_safe(token):
             token = secrets.token_urlsafe(48)
-        self.generated_token_var.set(f"Сохранится в .env: {token[:8]}...{token[-6:]}")
+        self.set_agent_token_display(token, "AGENT_TOKEN создан. После записи в .env нажми «Скопировать AGENT_TOKEN».")
         existing_workspace_roots = current_values.get("WORKSPACE_ROOTS", "")
         if not ENV_FILE.exists() or is_placeholder_workspace_root(existing_workspace_roots):
             existing_workspace_roots = ""
@@ -1700,6 +1801,7 @@ class InstallerApp:
             self.write_log(f"Не смог сохранить .env: {exc}\n")
             return None
 
+        self.set_agent_token_display(token, "AGENT_TOKEN сохранён в .env. Его можно скопировать кнопкой ниже.")
         self.set_step("env", "done", ".env обновлён")
         self.write_log(
             ".env готов.\n"
@@ -1796,6 +1898,7 @@ class InstallerApp:
         return True
 
     def _step_finish(self, token: str) -> None:
+        self.set_agent_token_display(token, "AGENT_TOKEN готов. Скопируй его для Bearer auth в GPT Actions.")
         self.set_step("finish", "done", "Можно запускать")
         self.set_status("Установка завершена")
         self.write_log(
@@ -1804,7 +1907,7 @@ class InstallerApp:
             "1. Сейчас сам попробую открыть панель.\n"
             "2. Дождись строки «Туннель активен».\n"
             "3. Только потом импортируй openapi.gpts.yaml в GPT Actions.\n"
-            f"4. Для Bearer auth используй AGENT_TOKEN из .env: {token[:8]}...{token[-6:]}\n"
+            "4. Для Bearer auth нажми «Скопировать AGENT_TOKEN» и вставь полный ключ в ChatGPT.\n"
         )
         self.launch_control_panel()
 
