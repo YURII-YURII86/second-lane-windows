@@ -69,6 +69,7 @@ INTERNET_CHECK_URLS = (
 )
 
 NGROK_DOMAIN_REGEX = re.compile(r"^[A-Za-z0-9-]+\.(?:ngrok-free\.dev|ngrok\.app)$")
+NGROK_AUTHTOKEN_LINE_RE = re.compile(r"^\s*authtoken\s*:\s*(?P<value>.+?)\s*$", re.IGNORECASE)
 PLACEHOLDER_WORKSPACE_ROOTS = {
     r"c:\secondlane",
     "c:/secondlane",
@@ -347,13 +348,93 @@ def download_file(url: str, destination: Path, timeout: int = 180) -> None:
 
 
 def ngrok_config_ok(ngrok_path: str) -> tuple[bool, str]:
+    authtoken_ok, authtoken_detail = ngrok_authtoken_configured()
+    if not authtoken_ok:
+        return False, authtoken_detail
     try:
         code, output = run_capture([ngrok_path, "config", "check"], timeout=12)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return False, f"не смог проверить ngrok config: {exc}"
     if code != 0:
         return False, output or "ngrok config check завершился с ошибкой"
-    return True, "ok"
+    return True, authtoken_detail
+
+
+def candidate_ngrok_config_files() -> list[Path]:
+    raw_paths: list[Path] = []
+
+    ngrok_config_env = os.environ.get("NGROK_CONFIG", "").strip()
+    if ngrok_config_env:
+        raw_paths.append(Path(ngrok_config_env))
+
+    local_appdata = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_appdata:
+        raw_paths.append(Path(local_appdata) / "ngrok" / "ngrok.yml")
+
+    appdata = os.environ.get("APPDATA", "").strip()
+    if appdata:
+        raw_paths.append(Path(appdata) / "ngrok" / "ngrok.yml")
+
+    userprofile = os.environ.get("USERPROFILE", "").strip()
+    if userprofile:
+        profile = Path(userprofile)
+        raw_paths.extend(
+            [
+                profile / "AppData" / "Local" / "ngrok" / "ngrok.yml",
+                profile / ".ngrok2" / "ngrok.yml",
+            ]
+        )
+
+    home = Path.home()
+    raw_paths.extend(
+        [
+            home / "AppData" / "Local" / "ngrok" / "ngrok.yml",
+            home / ".ngrok2" / "ngrok.yml",
+        ]
+    )
+
+    seen: set[str] = set()
+    result: list[Path] = []
+    for path in raw_paths:
+        key = str(path).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(path)
+    return result
+
+
+def config_text_has_ngrok_authtoken(text: str) -> bool:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = NGROK_AUTHTOKEN_LINE_RE.match(line)
+        if not match:
+            continue
+        value = match.group("value").split("#", 1)[0].strip().strip("'\"")
+        token = normalize_ngrok_token(value)
+        if len(token) >= 20 and " " not in token:
+            return True
+    return False
+
+
+def ngrok_authtoken_configured() -> tuple[bool, str]:
+    checked: list[str] = []
+    for config_path in candidate_ngrok_config_files():
+        try:
+            if not config_path.exists():
+                continue
+            checked.append(str(config_path))
+            text = config_path.read_text("utf-8", errors="ignore")
+        except OSError as exc:
+            checked.append(f"{config_path} (не смог прочитать: {exc})")
+            continue
+        if config_text_has_ngrok_authtoken(text):
+            return True, f"authtoken найден в {config_path}"
+    if checked:
+        return False, "authtoken не найден в найденном ngrok config"
+    return False, "файл ngrok config с authtoken пока не найден"
 
 
 def normalize_exe_path(raw: str) -> str:
