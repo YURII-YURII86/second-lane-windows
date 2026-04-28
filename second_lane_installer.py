@@ -683,6 +683,7 @@ class InstallerApp:
         self.step_vars: dict[str, tk.StringVar] = {
             spec.key: tk.StringVar(value="○ Ожидание") for spec in STEP_SPECS
         }
+        self.force_ngrok_auth = False
         self.busy = False
         self.worker_queue: queue.Queue[tuple[str, str]] = queue.Queue()
 
@@ -755,6 +756,7 @@ class InstallerApp:
         ).pack(anchor="w", pady=(4, 12))
 
         buttons = [
+            ("Сбросить мастер и начать заново", self.reset_installer_progress),
             ("Открыть большую инструкцию", self.open_guide),
             ("Открыть папку проекта", self.open_project_folder),
             ("Запустить панель", self.launch_control_panel),
@@ -1357,6 +1359,36 @@ class InstallerApp:
         except Exception as exc:
             self.write_log(f"Не смог открыть папку проекта: {exc}\n")
 
+    def reset_installer_progress(self) -> None:
+        if self.busy:
+            self.write_log("Сейчас идёт установка. Дождись окончания шага, потом можно будет сбросить мастер.\n")
+            return
+
+        self.force_ngrok_auth = True
+        self.current_step_key = STEP_SPECS[0].key
+        self.ngrok_token_var.set("")
+        self.ngrok_domain_var.set("")
+        self.ngrok_path_var.set("")
+        self.workspace_root_var.set(DEFAULT_WORKSPACE_ROOT)
+        self.generated_token_var.set("Новый токен будет создан автоматически во время установки")
+
+        for spec in STEP_SPECS:
+            self.step_status[spec.key] = "pending"
+            self.step_vars[spec.key].set("○ Ожидание")
+
+        try:
+            STATE_FILE.unlink(missing_ok=True)
+        except OSError as exc:
+            self.write_log(f"Не смог удалить файл прогресса мастера: {exc}\n")
+
+        self.status_var.set("Мастер сброшен. Можно начать установку заново.")
+        self.write_log(
+            "Сбросил прогресс мастера и очищенные поля ввода.\n"
+            "Важно: проект, .env и .venv не удалял. Это безопасный сброс интерфейса.\n"
+            "Следующий проход принудительно попросит ключ ngrok, даже если старый ngrok config выглядит заполненным.\n"
+        )
+        self._refresh_current_step_card()
+
     def launch_control_panel(self) -> None:
         if LAUNCHER_FILE.exists():
             try:
@@ -1487,10 +1519,9 @@ class InstallerApp:
             self.set_status("Жду ngrok")
             self.write_log(
                 "Что сделать сейчас:\n"
-                "1. Если аккаунта ещё нет, нажми «Открыть ngrok signup».\n"
-                "2. Нажми «Открыть ngrok download» и скачай Windows-версию.\n"
-                "3. Если скачался zip, распакуй его и нажми «Выбрать ngrok.exe».\n"
-                "4. Потом снова нажми главную кнопку.\n"
+                "1. Нажми «Открыть ngrok download» и скачай Windows-версию.\n"
+                "2. Если скачался zip, распакуй его и нажми «Выбрать ngrok.exe».\n"
+                "3. Потом снова нажми главную кнопку.\n"
             )
             self.open_external(NGROK_DOWNLOAD_URL)
             return None
@@ -1503,16 +1534,20 @@ class InstallerApp:
     def _step_auth(self, ngrok_path: str) -> bool:
         self.set_step("auth", "running", "Проверяю")
         self.set_status("Проверяю ключ ngrok")
-        ok, detail = ngrok_config_ok(ngrok_path)
-        if ok:
-            self.set_step("auth", "done", "Ключ уже настроен")
-            self.write_log("ngrok уже привязан к аккаунту.\n")
-            return True
-        if detail and "authentication failed" not in detail.lower() and "invalid authtoken" not in detail.lower():
-            self.write_log(f"Текущий ngrok config ещё не готов: {detail}\n")
-
         authtoken = normalize_ngrok_token(self.ngrok_token_var.get())
         if not authtoken:
+            ok, detail = ngrok_config_ok(ngrok_path)
+            if ok and not self.force_ngrok_auth:
+                self.set_step("auth", "done", "Ключ уже настроен")
+                self.write_log("ngrok уже привязан к аккаунту.\n")
+                return True
+            if ok and self.force_ngrok_auth:
+                self.write_log(
+                    "В ngrok config уже есть authtoken, но мастер был сброшен.\n"
+                    "Чтобы не повторить кривую установку, прошу вставить ключ заново.\n"
+                )
+            elif detail and "authentication failed" not in detail.lower() and "invalid authtoken" not in detail.lower():
+                self.write_log(f"Текущий ngrok config ещё не готов: {detail}\n")
             self.set_step("auth", "action", "Вставь authtoken")
             self.set_status("Жду authtoken")
             self.write_log(
@@ -1552,6 +1587,7 @@ class InstallerApp:
             return False
 
         self.set_step("auth", "done", "Authtoken сохранён")
+        self.force_ngrok_auth = False
         self.write_log("Authtoken сохранён в конфиг ngrok.\n")
         return True
 
